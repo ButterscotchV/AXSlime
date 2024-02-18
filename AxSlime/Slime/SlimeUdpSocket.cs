@@ -51,22 +51,22 @@ namespace AxSlime.Slime
         public void SendPacket(SlimePacket packet)
         {
             var len = SerializePacket(_buffer, packet);
+            // This should never happen
+            if (len <= 0)
+                return;
+
             _slimeClient?.Send(_buffer, len);
         }
 
-        public int SerializePacket(Span<byte> buffer, SlimePacket packet)
+        private int SerializePacket(Span<byte> buffer, SlimePacket packet)
         {
-            // Skip forward for the packet size
-            var i = sizeof(ushort);
+            var i = 0;
 
             BinaryPrimitives.WriteUInt32BigEndian(buffer[i..], packet.PacketId);
             i += sizeof(uint);
             BinaryPrimitives.WriteUInt64BigEndian(buffer[i..], _packetNum++);
             i += sizeof(ulong);
             i += packet.Serialize(buffer[i..]);
-
-            // Go back and write the final packet size
-            BinaryPrimitives.WriteUInt16BigEndian(buffer, (ushort)(i - sizeof(ushort)));
 
             return i;
         }

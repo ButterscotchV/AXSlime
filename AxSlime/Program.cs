@@ -1,4 +1,5 @@
 using AxSlime.Axis;
+using AxSlime.Slime;
 
 static void OnTrackerData(object? sender, AxisOutputData data)
 {
@@ -12,6 +13,11 @@ try
     using var axisSocket = new AxisUdpSocket();
     axisSocket.OnAxisData += OnTrackerData;
     axisSocket.Start();
+
+    using var slimeSocket = new SlimeUdpSocket();
+    slimeSocket.Start();
+    slimeSocket.SendPacket(new Packet3Handshake());
+    slimeSocket.SendPacket(new Packet15SensorInfo());
 
     Console.WriteLine("AXIS receiver is running, press any key to stop the receiver.");
     Console.ReadKey();
