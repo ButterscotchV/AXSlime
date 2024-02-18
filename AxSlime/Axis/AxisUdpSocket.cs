@@ -86,12 +86,12 @@ namespace AxSlime.Axis
                 var z = ReadQuatAxis(i, dataIndex++);
                 var y = ReadQuatAxis(i, dataIndex++);
                 var w = ReadQuatAxis(i, dataIndex++);
-                node.rotation = new Quaternion(x, y, z, w);
+                node.Rotation = new Quaternion(x, y, z, w);
 
                 var xAccel = ReadAccelAxis(i, dataIndex++);
                 var yAccel = ReadAccelAxis(i, dataIndex++);
                 var zAccel = ReadAccelAxis(i, dataIndex++);
-                node.acceleration = new Vector3(xAccel, yAccel, zAccel);
+                node.Acceleration = new Vector3(xAccel, yAccel, zAccel);
             }
         }
 
@@ -111,12 +111,12 @@ namespace AxSlime.Axis
             var y = ReadHubAxis(startingPosition, dataIndex++);
             var z = ReadHubAxis(startingPosition, dataIndex++);
             var w = ReadHubAxis(startingPosition, dataIndex++);
-            axisOutputData.hubData.rotation = new Quaternion(x, y, z, w);
+            axisOutputData.hubData.Rotation = new Quaternion(x, y, z, w);
 
             var xPos = ReadHubAxis(startingPosition, dataIndex++);
             var yPos = ReadHubAxis(startingPosition, dataIndex++);
             var zPos = ReadHubAxis(startingPosition, dataIndex++);
-            axisOutputData.hubData.position = new Vector3(-xPos, yPos, zPos);
+            axisOutputData.hubData.Position = new Vector3(-xPos, yPos, zPos);
         }
     }
 }

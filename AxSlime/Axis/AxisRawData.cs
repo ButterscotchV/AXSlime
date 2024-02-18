@@ -4,25 +4,37 @@ namespace AxSlime.Axis
 {
     public class AxisNodeData
     {
-        public bool isActive = false;
-        public Quaternion rotation;
-        public Vector3 acceleration;
+        public bool IsActive = false;
+        private Quaternion _rotation;
+
+        public Quaternion Rotation
+        {
+            get => _rotation;
+            set => _rotation = Quaternion.Normalize(value);
+        }
+        public Vector3 Acceleration { get; set; }
 
         public override string ToString()
         {
-            return $"rotation: {rotation}, acceleration: {acceleration}";
+            return $"rotation: {Rotation}, acceleration: {Acceleration}";
         }
     }
 
     public class AxisHubData
     {
-        public bool isActive = false;
-        public Quaternion rotation;
-        public Vector3 position;
+        public bool IsActive = false;
+        private Quaternion _rotation;
+
+        public Quaternion Rotation
+        {
+            get => _rotation;
+            set => _rotation = Quaternion.Normalize(value);
+        }
+        public Vector3 Position { get; set; }
 
         public override string ToString()
         {
-            return $"rotation: {rotation}, position: {position}";
+            return $"rotation: {Rotation}, position: {Position}";
         }
     }
 
