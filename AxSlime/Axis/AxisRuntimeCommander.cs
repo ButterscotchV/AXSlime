@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace Axis.Communication.Commander
+namespace AxSlime.Axis
 {
     public enum CommandType
     {

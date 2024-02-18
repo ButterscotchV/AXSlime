@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace Axis.Communication
+namespace AxSlime.Axis
 {
     public class UdpSocket : IDisposable
     {
@@ -152,6 +152,7 @@ namespace Axis.Communication
                     _isTxStarted = true; // First data arrived so tx started
                     OnDataIn?.Invoke(this, EventArgs.Empty);
                 }
+                catch (OperationCanceledException) { }
                 catch (Exception e)
                 {
                     Console.Error.WriteLine(e);
@@ -182,6 +183,7 @@ namespace Axis.Communication
                         continue;
                     OnMessageIn?.Invoke(this, EventArgs.Empty);
                 }
+                catch (OperationCanceledException) { }
                 catch (Exception e)
                 {
                     Console.Error.WriteLine(e);

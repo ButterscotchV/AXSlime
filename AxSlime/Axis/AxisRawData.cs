@@ -1,12 +1,17 @@
 using System.Numerics;
 
-namespace Axis.DataTypes
+namespace AxSlime.Axis
 {
     public class AxisNodeData
     {
         public bool isActive = false;
         public Quaternion rotation;
         public Vector3 acceleration;
+
+        public override string ToString()
+        {
+            return $"rotation: {rotation}, acceleration: {acceleration}";
+        }
     }
 
     public class AxisHubData
@@ -14,6 +19,11 @@ namespace Axis.DataTypes
         public bool isActive = false;
         public Quaternion rotation;
         public Vector3 position;
+
+        public override string ToString()
+        {
+            return $"rotation: {rotation}, position: {position}";
+        }
     }
 
     public class AxisOutputData

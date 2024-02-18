@@ -1,9 +1,8 @@
 using System.Buffers.Binary;
 using System.Net;
 using System.Numerics;
-using Axis.DataTypes;
 
-namespace Axis.Communication
+namespace AxSlime.Axis
 {
     public class AxisRuntimeUdpSocket : UdpSocket
     {
