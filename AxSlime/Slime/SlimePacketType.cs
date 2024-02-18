@@ -28,5 +28,8 @@ namespace AxSlime.Slime
         Vibrate = 2,
         Handshake = 3,
         Command = 4,
+        PingPong = 10,
+        SensorInfo = 15,
+        FeatureFlags = 22,
     }
 }

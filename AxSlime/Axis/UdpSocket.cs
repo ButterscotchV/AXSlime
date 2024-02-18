@@ -77,10 +77,7 @@ namespace AxSlime.Axis
                 true
             );
 
-            // Create raw receive loop
             _rawReceiveTask = ReceiveRawData(_cancelTokenSource.Token);
-
-            // Create message receive loop
             _messageReceiveTask = ReceiveMessage(_cancelTokenSource.Token);
 
             _isRunning = true;
@@ -92,15 +89,18 @@ namespace AxSlime.Axis
                 return;
 
             _cancelTokenSource?.Cancel();
-            _rawReceiveTask?.Wait();
-            _messageReceiveTask?.Wait();
-            _cancelTokenSource?.Dispose();
-            _commandClient?.Close();
 
+            _rawReceiveTask?.Wait();
             _rawReceiveTask = null;
+
+            _messageReceiveTask?.Wait();
             _messageReceiveTask = null;
-            _commandClient = null;
+
+            _cancelTokenSource?.Dispose();
             _cancelTokenSource = null;
+
+            _commandClient?.Close();
+            _commandClient = null;
 
             _isRunning = false;
         }

@@ -143,6 +143,26 @@ namespace AxSlime.Slime
         }
     }
 
+    public class Packet10PingPong : SlimePacket
+    {
+        public int PingId { get; set; }
+
+        public Packet10PingPong()
+            : base(SlimeTxPacketType.PingPong) { }
+
+        public override int Serialize(Span<byte> buffer)
+        {
+            BinaryPrimitives.WriteInt32BigEndian(buffer, PingId);
+            return sizeof(int);
+        }
+
+        public override Packet10PingPong Deserialize(ReadOnlySpan<byte> data)
+        {
+            PingId = BinaryPrimitives.ReadInt32BigEndian(data);
+            return this;
+        }
+    }
+
     public class Packet15SensorInfo : SlimeSensorPacket
     {
         public PacketSensorStatus SensorStatus { get; set; } = PacketSensorStatus.Ok;
