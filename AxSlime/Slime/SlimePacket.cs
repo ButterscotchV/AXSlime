@@ -18,7 +18,7 @@ namespace AxSlime.Slime
             : this((byte)packetType) { }
 
         public abstract int Serialize(Span<byte> buffer);
-        public abstract SlimePacket Deserialize(ReadOnlySpan<byte> data);
+        public abstract int Deserialize(ReadOnlySpan<byte> data);
 
         public int SerializePacketId(Span<byte> buffer)
         {
@@ -56,10 +56,10 @@ namespace AxSlime.Slime
             return 1;
         }
 
-        public override SlimeSensorPacket Deserialize(ReadOnlySpan<byte> buffer)
+        public override int Deserialize(ReadOnlySpan<byte> buffer)
         {
             SensorId = buffer[0];
-            return this;
+            return sizeof(byte);
         }
     }
 }

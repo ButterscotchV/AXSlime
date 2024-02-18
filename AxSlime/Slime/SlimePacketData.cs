@@ -56,9 +56,9 @@ namespace AxSlime.Slime
             return 0;
         }
 
-        public override Packet0Heartbeat Deserialize(ReadOnlySpan<byte> data)
+        public override int Deserialize(ReadOnlySpan<byte> data)
         {
-            return this;
+            return 0;
         }
     }
 
@@ -109,9 +109,9 @@ namespace AxSlime.Slime
             return i;
         }
 
-        public override Packet3Handshake Deserialize(ReadOnlySpan<byte> data)
+        public override int Deserialize(ReadOnlySpan<byte> data)
         {
-            return this;
+            return 0;
         }
     }
 
@@ -137,9 +137,9 @@ namespace AxSlime.Slime
             return i;
         }
 
-        public override Packet4Accel Deserialize(ReadOnlySpan<byte> data)
+        public override int Deserialize(ReadOnlySpan<byte> data)
         {
-            return this;
+            return 0;
         }
     }
 
@@ -156,10 +156,10 @@ namespace AxSlime.Slime
             return sizeof(int);
         }
 
-        public override Packet10PingPong Deserialize(ReadOnlySpan<byte> data)
+        public override int Deserialize(ReadOnlySpan<byte> data)
         {
             PingId = BinaryPrimitives.ReadInt32BigEndian(data);
-            return this;
+            return sizeof(int);
         }
     }
 
@@ -188,9 +188,9 @@ namespace AxSlime.Slime
             return i;
         }
 
-        public override Packet15SensorInfo Deserialize(ReadOnlySpan<byte> data)
+        public override int Deserialize(ReadOnlySpan<byte> data)
         {
-            return this;
+            return 0;
         }
     }
 
@@ -227,9 +227,9 @@ namespace AxSlime.Slime
             return i;
         }
 
-        public override Packet17RotationData Deserialize(ReadOnlySpan<byte> data)
+        public override int Deserialize(ReadOnlySpan<byte> data)
         {
-            return this;
+            return 0;
         }
     }
 }

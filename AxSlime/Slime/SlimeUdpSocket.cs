@@ -6,6 +6,7 @@ namespace AxSlime.Slime
 {
     public class SlimeUdpSocket : IDisposable
     {
+        // Offset of packet type + packet num (always 0)
         public static readonly int PacketHeaderLen = sizeof(uint) + sizeof(ulong);
 
         private bool _isRunning = false;
@@ -98,7 +99,6 @@ namespace AxSlime.Slime
         protected void OnRxData(byte[] data)
         {
             var packetType = (SlimeRxPacketType)SlimePacket.DeserializePacketId(data);
-            // Offset of packet type + packet num (always 0)
             var packetData = data.AsSpan()[PacketHeaderLen..];
 
             switch (packetType)
@@ -110,7 +110,8 @@ namespace AxSlime.Slime
                     _isConnected = true;
                     break;
                 case SlimeRxPacketType.PingPong:
-                    var packet = new Packet10PingPong().Deserialize(packetData);
+                    var packet = new Packet10PingPong();
+                    packet.Deserialize(packetData);
                     SendPacket(packet);
                     break;
             }
