@@ -26,7 +26,6 @@ namespace AxSlime.Axis
                 { CommandType.ImuZero, [0x16, 0x02, 0x01] },
                 { CommandType.Buzz, [0x80] },
                 { CommandType.LedColor, [0x81] },
-                { CommandType.ResetIMU, [0x00] }, // Unknown?
                 { CommandType.SetMode, [0x21] },
                 { CommandType.Calibration, [0x16, 0x01, 0x00] },
                 { CommandType.StartStreaming, [0x01, 0xE0] },
@@ -38,7 +37,7 @@ namespace AxSlime.Axis
         // Optimize as an array, keeping the dictionary for readability
         private static readonly byte[][] _cmdBytesArr = Enum.GetValues<CommandType>()
             .Order()
-            .Select(c => _cmdBytes[c])
+            .Select(c => _cmdBytes.TryGetValue(c, out var b) ? b : [])
             .ToArray();
 
         private readonly AxisUdpSocket _axisUdpSocket = axisUdpSocket;
