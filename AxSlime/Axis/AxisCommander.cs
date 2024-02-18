@@ -26,6 +26,7 @@ namespace AxSlime.Axis
                 { CommandType.ImuZero, [0x16, 0x02, 0x01] },
                 { CommandType.Buzz, [0x80] },
                 { CommandType.LedColor, [0x81] },
+                { CommandType.ResetIMU, [0x00] }, // Unknown?
                 { CommandType.SetMode, [0x21] },
                 { CommandType.Calibration, [0x16, 0x01, 0x00] },
                 { CommandType.StartStreaming, [0x01, 0xE0] },
