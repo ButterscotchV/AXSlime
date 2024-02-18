@@ -20,6 +20,12 @@ namespace AxSlime.Slime
             return strLen + sizeof(byte);
         }
 
+        public static int SerializeBytes(Span<byte> buffer, ReadOnlySpan<byte> data)
+        {
+            data.CopyTo(buffer);
+            return data.Length;
+        }
+
         public static PhysicalAddress? GetMacAddress()
         {
             return NetworkInterface
@@ -36,13 +42,44 @@ namespace AxSlime.Slime
                 ?.GetPhysicalAddress();
         }
 
+        public static readonly byte[] EmptyMacAddress = [0, 0, 0, 0, 0, 0];
         public static readonly byte[] MacAddress =
-            GetMacAddress()?.GetAddressBytes() ?? [0, 0, 0, 0, 0, 0];
+            GetMacAddress()?.GetAddressBytes() ?? EmptyMacAddress;
 
-        public static int SerializeMacAddress(Span<byte> buffer)
+        public static byte[] IncrementedMacAddress(int amount)
         {
-            MacAddress.CopyTo(buffer);
-            return sizeof(byte) * 6;
+            if (amount <= 0)
+                return MacAddress;
+
+            var addr = GetMacAddress()?.GetAddressBytes();
+            if (addr == null)
+                return EmptyMacAddress;
+
+            for (var i = 0; i < amount; i++)
+            {
+                Increment(addr, addr.Length - 1);
+            }
+
+            return addr;
+        }
+
+        private static bool Increment(byte[] data, int i)
+        {
+            if (i < 0)
+                return false;
+
+            if (data[i] < 255)
+            {
+                data[i]++;
+            }
+            else
+            {
+                if (!Increment(data, i - 1))
+                    return false;
+                data[i] = 0;
+            }
+
+            return true;
         }
     }
 
@@ -72,6 +109,7 @@ namespace AxSlime.Slime
         public PacketMcuType McuType { get; set; } = PacketMcuType.Wrangler;
         public uint FirmwareBuildNumber { get; set; } = 17;
         public string FirmwareVersion { get; set; } = "0.4.0";
+        public int MacAddressOffset { get; set; } = 0;
 
         public Packet3Handshake()
             : base(SlimeTxPacketType.Handshake) { }
@@ -104,7 +142,10 @@ namespace AxSlime.Slime
             BinaryPrimitives.WriteUInt32BigEndian(buffer[i..], FirmwareBuildNumber);
             i += sizeof(uint);
             i += PacketUtils.SerializeShortString(buffer[i..], FirmwareVersion);
-            i += PacketUtils.SerializeMacAddress(buffer[i..]);
+            i += PacketUtils.SerializeBytes(
+                buffer[i..],
+                PacketUtils.IncrementedMacAddress(MacAddressOffset)
+            );
 
             return i;
         }
