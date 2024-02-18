@@ -17,113 +17,105 @@ namespace Axis.Communication.Commander
         SinglePoseCalibration
     }
 
-    public class AxisRuntimeCommander
+    public class AxisRuntimeCommander(AxisRuntimeUdpSocket axisUdpSocket)
     {
-        AxisRuntimeUdpSocket axisUdpSocket;
-
-        private Dictionary<CommandType, byte[]> commandTypeToBytes = new Dictionary<
-            CommandType,
-            byte[]
-        >()
-        {
-            { CommandType.MainHeader, new byte[] { 0x00, 0xEF, 0xAC, 0xEF, 0xAC } },
-            { CommandType.ImuZero, new byte[] { 0x16, 0x02, 0x01 } },
-            { CommandType.Buzz, new byte[] { 0x80 } },
-            { CommandType.LedColor, new byte[] { 0x81 } },
-            { CommandType.SetMode, new byte[] { 0x21 } },
-            { CommandType.Calibration, new byte[] { 0x16, 0x01, 0x00 } },
-            { CommandType.StartStreaming, new byte[] { 0x01, 0xE0 } },
-            { CommandType.SetStreamingMode, new byte[] { 0x01, 0xE2, 0x01, 0x00 } },
-            { CommandType.StopStreaming, new byte[] { 0x01, 0xE1 } },
-            { CommandType.SinglePoseCalibration, new byte[] { 0x16, 0x00, 0x01 } }
-        };
-
-        private void HandleOnStartStreaming()
-        {
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.StartStreaming];
-            axisUdpSocket.SendData(data.ToArray());
-            data = commandTypeToBytes[CommandType.SetStreamingMode];
-            axisUdpSocket.SendData(data.ToArray());
-        }
-
-        private void HandleOnReboot()
-        {
-            //byte rebootAllPaired = 0x00;
-            // byte[] commandData = new byte[] {
-            //   rebootAllPaired };
-
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.MainHeader]
-                .Concat(commandTypeToBytes[CommandType.Calibration]);
-            // .Concat(commandData);
-            axisUdpSocket.SendData(data.ToArray());
-            //Debug.Log("Reboot");
-        }
-
-        private void HandleOnTurnOffStream()
-        {
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.StopStreaming];
-            axisUdpSocket.SendData(data.ToArray());
-        }
-
-        private void HandleOnZeroAll()
-        {
-            // byte[] commandData = new byte[] {
-            //   BitConverter.GetBytes(nodeIndex)[0] };
-
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.MainHeader]
-                .Concat(commandTypeToBytes[CommandType.ImuZero]);
-            // .Concat(commandData);
-
-            axisUdpSocket.SendData(data.ToArray());
-            //Debug.Log($"Command Data {commandData[0]}");
-        }
-
-        private void HandleOnSetNodeVibration(int nodeIndex, float intensity, float durationSeconds)
-        {
-            var commandData = new byte[]
+        private static readonly Dictionary<CommandType, byte[]> _cmdBytes =
+            new()
             {
-                BitConverter.GetBytes(nodeIndex)[0],
-                GetByteFromNormalizedFloat(intensity),
-                GetByteFromNormalizedFloat(durationSeconds / 25.5f)
+                { CommandType.MainHeader, [0x00, 0xEF, 0xAC, 0xEF, 0xAC] },
+                { CommandType.ImuZero, [0x16, 0x02, 0x01] },
+                { CommandType.Buzz, [0x80] },
+                { CommandType.LedColor, [0x81] },
+                { CommandType.SetMode, [0x21] },
+                { CommandType.Calibration, [0x16, 0x01, 0x00] },
+                { CommandType.StartStreaming, [0x01, 0xE0] },
+                { CommandType.StopStreaming, [0x01, 0xE1] },
+                { CommandType.SetStreamingMode, [0x01, 0xE2, 0x01, 0x00] },
+                { CommandType.SinglePoseCalibration, [0x16, 0x00, 0x01] }
             };
 
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.MainHeader]
-                .Concat(commandTypeToBytes[CommandType.Buzz])
-                .Concat(commandData);
+        // Optimize as an array, keeping the dictionary for readability
+        private static readonly byte[][] _cmdBytesArr = Enum.GetValues<CommandType>()
+            .Order()
+            .Select(c => _cmdBytes[c])
+            .ToArray();
 
-            axisUdpSocket.SendData(data.ToArray());
-        }
+        private readonly AxisRuntimeUdpSocket _axisUdpSocket = axisUdpSocket;
 
         private static byte GetByteFromNormalizedFloat(float normalizedFloat)
         {
-            return BitConverter.GetBytes((int)MathF.Round(normalizedFloat * 255))[0];
+            return (byte)MathF.Round(Math.Clamp(normalizedFloat * 255f, 0f, 255f));
         }
 
-        private void HandleOnSetNodeLedColor(int nodeIndex, Color color, float brightness)
+        private static byte[] ToBytes(CommandType command)
+        {
+            return _cmdBytesArr[(int)command];
+        }
+
+        private void SendCommand(CommandType command)
+        {
+            _axisUdpSocket.SendData(ToBytes(command));
+        }
+
+        private void SendCommandWithHeader(CommandType command)
+        {
+            _axisUdpSocket.SendData([.. ToBytes(CommandType.MainHeader), .. ToBytes(command)]);
+        }
+
+        private void StartStreaming()
+        {
+            SendCommand(CommandType.StartStreaming);
+            SendCommand(CommandType.SetStreamingMode);
+        }
+
+        private void StopStream()
+        {
+            SendCommand(CommandType.StopStreaming);
+        }
+
+        private void Reboot()
+        {
+            SendCommandWithHeader(CommandType.Calibration);
+        }
+
+        private void ZeroAll()
+        {
+            SendCommandWithHeader(CommandType.ImuZero);
+        }
+
+        private void SinglePoseCalibration()
+        {
+            SendCommandWithHeader(CommandType.SinglePoseCalibration);
+        }
+
+        private void SetNodeVibration(byte nodeIndex, float intensity, float durationSeconds)
+        {
+            _axisUdpSocket.SendData(
+                [
+                    .. ToBytes(CommandType.MainHeader),
+                    .. ToBytes(CommandType.Buzz),
+                    nodeIndex,
+                    GetByteFromNormalizedFloat(intensity),
+                    GetByteFromNormalizedFloat(durationSeconds / 25.5f)
+                ]
+            );
+        }
+
+        private void SetNodeLedColor(byte nodeIndex, Color color, float brightness)
         {
             brightness = brightness > 1f ? 1f / 3f : brightness / 3f;
 
-            var commandData = new byte[]
-            {
-                BitConverter.GetBytes(nodeIndex)[0],
-                color.R,
-                color.B,
-                color.G,
-                GetByteFromNormalizedFloat(brightness)
-            };
-
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.MainHeader]
-                .Concat(commandTypeToBytes[CommandType.LedColor])
-                .Concat(commandData);
-
-            axisUdpSocket.SendData(data.ToArray());
-        }
-
-        private void HandleOnSingleCalibration()
-        {
-            IEnumerable<byte> data = commandTypeToBytes[CommandType.MainHeader]
-                .Concat(commandTypeToBytes[CommandType.SinglePoseCalibration]);
-            axisUdpSocket.SendData(data.ToArray());
+            _axisUdpSocket.SendData(
+                [
+                    .. ToBytes(CommandType.MainHeader),
+                    .. ToBytes(CommandType.LedColor),
+                    nodeIndex,
+                    color.R,
+                    color.B,
+                    color.G,
+                    GetByteFromNormalizedFloat(brightness)
+                ]
+            );
         }
     }
 }

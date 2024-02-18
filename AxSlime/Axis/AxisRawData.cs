@@ -6,27 +6,28 @@ namespace Axis.DataTypes
     {
         public bool isActive = false;
         public Quaternion rotation;
-        public Vector3 accelerations;
+        public Vector3 acceleration;
     }
 
     public class AxisHubData
     {
+        public bool isActive = false;
         public Quaternion rotation;
-        public Vector3 absolutePosition;
-        internal bool isActive;
+        public Vector3 position;
     }
 
     public class AxisOutputData
     {
         public const int NodesCount = 16;
-        public List<AxisNodeData> nodesDataList;
-        public AxisHubData hubData;
-        public bool isActive = false;
+        public readonly AxisNodeData[] nodesData = new AxisNodeData[NodesCount];
+        public readonly AxisHubData hubData = new();
 
         public AxisOutputData()
         {
-            hubData = new AxisHubData();
-            nodesDataList = new List<AxisNodeData>();
+            for (var i = 0; i < NodesCount; i++)
+            {
+                nodesData[i] = new AxisNodeData();
+            }
         }
     }
 }

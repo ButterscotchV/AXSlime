@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using System.Net;
 using System.Numerics;
 using Axis.DataTypes;
 
@@ -5,12 +7,7 @@ namespace Axis.Communication
 {
     public class AxisRuntimeUdpSocket : UdpSocket
     {
-        public static AxisRuntimeUdpSocket Instance;
-        private AxisOutputData _axisOutputData = new();
-
-        public static bool ShouldConnectToAxis = false;
-
-        public static bool IsConnectedToAxis = false;
+        public AxisOutputData AxisOutputData = new();
 
         //Data Packet Characteristics
         private const int DataStartOffset = 6;
@@ -18,145 +15,92 @@ namespace Axis.Communication
         private const int DataSize = 15;
         private const int DataPacketSizeInBytes = 290;
 
-        private void Update()
+        public event EventHandler<AxisOutputData>? OnAxisData;
+
+        public AxisRuntimeUdpSocket(
+            IPEndPoint? commandEndPoint = null,
+            int multicastPort = 45071,
+            int messagePort = 45069
+        )
+            : base(commandEndPoint, multicastPort, messagePort)
         {
-            NullThreadIfNotAlive();
+            OnDataIn += ProcessData;
+        }
 
-            if (CheckIfNeedsToConnect())
-            {
-                StopReceivingThread();
-                StartReceiveThread();
-                IsConnectedToAxis = true;
-                // AxisRuntimeCommander.HandleOnStartStreaming()
-                // AxisEvents.OnStartStreaming.Invoke();
-            }
-            else if (CheckIfNeedsToDisconnect())
-            {
-                StopReceivingThread();
-                IsConnectedToAxis = false;
-            }
-
-            if (IsConnectedToAxis != true)
+        private void ProcessData(object? source, EventArgs e)
+        {
+            if (DataIn.Length != DataPacketSizeInBytes)
                 return;
 
-            ProcessDataIfReceived();
-            if (DataWaitingForProcessing == true)
-            {
-                DataWaitingForProcessing = false;
-            }
+            GetDataFromHub(AxisOutputData);
+            GetDataFromNodes(AxisOutputData);
+
+            OnAxisData?.Invoke(this, AxisOutputData);
         }
 
-        private void NullThreadIfNotAlive()
+        private static int GetAxisIndex(int i, int dataIndex)
         {
-            RawDataReceiveThread =
-                RawDataReceiveThread?.IsAlive == true ? RawDataReceiveThread : null;
+            return DataStartOffset + (i * DataSize) + (dataIndex * sizeof(short)) + NodeIndexOffset;
         }
 
-        private bool CheckIfNeedsToDisconnect()
+        private float ReadShort(int i, int dataIndex)
         {
-            return ShouldConnectToAxis == false && IsConnectedToAxis == true;
+            return BinaryPrimitives.ReadInt16LittleEndian(DataIn[GetAxisIndex(i, dataIndex)..]);
         }
 
-        private bool CheckIfNeedsToConnect()
+        private float ReadQuatAxis(int i, int dataIndex)
         {
-            ShouldConnectToAxis = RawDataReceiveThread == null || ShouldConnectToAxis;
-            return (ShouldConnectToAxis == true && RawDataReceiveThread == null);
+            return ReadShort(i, dataIndex) * 0.00006103f;
         }
 
-        private void ProcessDataIfReceived()
+        private float ReadAccelAxis(int i, int dataIndex)
         {
-            if (DataInBytes == null || DataInBytes.Length != DataPacketSizeInBytes)
-                return;
-
-            GetDataFromHub(_axisOutputData);
-            GetDataFromNodes(_axisOutputData);
-            // AxisEvents.OnAxisOutputDataUpdated?.Invoke(_axisOutputData);
+            return ReadShort(i, dataIndex) * 0.00390625f;
         }
 
         private void GetDataFromNodes(AxisOutputData axisOutputData)
         {
-            axisOutputData.nodesDataList = new List<AxisNodeData>();
-
-            for (var i = 0; i < 16; i++)
+            for (var i = 0; i < AxisOutputData.NodesCount; i++)
             {
-                var x =
-                    (
-                        BitConverter.ToInt16(
-                            DataInBytes,
-                            DataStartOffset + (i * DataSize) + 0 + NodeIndexOffset
-                        )
-                    ) * 0.00006103f;
-                var z =
-                    (
-                        BitConverter.ToInt16(
-                            DataInBytes,
-                            DataStartOffset + (i * DataSize) + 2 + NodeIndexOffset
-                        )
-                    ) * 0.00006103f;
-                var y =
-                    (
-                        BitConverter.ToInt16(
-                            DataInBytes,
-                            DataStartOffset + (i * DataSize) + 4 + NodeIndexOffset
-                        )
-                    ) * 0.00006103f;
-                var w =
-                    (
-                        BitConverter.ToInt16(
-                            DataInBytes,
-                            DataStartOffset + (i * DataSize) + 6 + NodeIndexOffset
-                        )
-                    ) * 0.00006103f;
+                var node = axisOutputData.nodesData[i];
 
-                var xAccel =
-                    BitConverter.ToInt16(
-                        DataInBytes,
-                        DataStartOffset + (i * DataSize) + 8 + NodeIndexOffset
-                    ) * 0.00390625f;
-                var yAccel =
-                    BitConverter.ToInt16(
-                        DataInBytes,
-                        DataStartOffset + (i * DataSize) + 10 + NodeIndexOffset
-                    ) * 0.00390625f;
-                var zAccel =
-                    BitConverter.ToInt16(
-                        DataInBytes,
-                        DataStartOffset + (i * DataSize) + 12 + NodeIndexOffset
-                    ) * 0.00390625f;
-                var nodeQuaternion = new Quaternion(x, y, z, w);
-                var acceleration = new Vector3(xAccel, yAccel, zAccel);
+                var dataIndex = 0;
 
-                var axisNodeData = new AxisNodeData
-                {
-                    rotation = nodeQuaternion,
-                    accelerations = acceleration
-                };
+                var x = ReadQuatAxis(i, dataIndex++);
+                var z = ReadQuatAxis(i, dataIndex++);
+                var y = ReadQuatAxis(i, dataIndex++);
+                var w = ReadQuatAxis(i, dataIndex++);
+                node.rotation = new Quaternion(x, y, z, w);
 
-                axisOutputData.nodesDataList.Add(axisNodeData);
+                var xAccel = ReadAccelAxis(i, dataIndex++);
+                var yAccel = ReadAccelAxis(i, dataIndex++);
+                var zAccel = ReadAccelAxis(i, dataIndex++);
+                node.acceleration = new Vector3(xAccel, yAccel, zAccel);
             }
+        }
+
+        private float ReadHubAxis(int start, int dataIndex)
+        {
+            return BinaryPrimitives.ReadSingleLittleEndian(
+                DataIn[(start + (dataIndex * sizeof(float)))..]
+            );
         }
 
         private void GetDataFromHub(AxisOutputData axisOutputData)
         {
-            var hubDataStartingPosition = DataInBytes.Length - 28;
+            var startingPosition = DataIn.Length - 28;
+            var dataIndex = 0;
 
-            var x = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition);
-            var y = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition + 4);
-            var z = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition + 8);
-            var w = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition + 12);
-            var rotation = new Quaternion(x, y, z, w);
+            var x = ReadHubAxis(startingPosition, dataIndex++);
+            var y = ReadHubAxis(startingPosition, dataIndex++);
+            var z = ReadHubAxis(startingPosition, dataIndex++);
+            var w = ReadHubAxis(startingPosition, dataIndex++);
+            axisOutputData.hubData.rotation = new Quaternion(x, y, z, w);
 
-            var xPos = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition + 16);
-            var yPos = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition + 20);
-            var zPos = BitConverter.ToSingle(DataInBytes, hubDataStartingPosition + 24);
-
-            axisOutputData.hubData.absolutePosition = new Vector3(-xPos, yPos, zPos);
-            axisOutputData.hubData.rotation = rotation;
-        }
-
-        protected virtual void OnDisable()
-        {
-            //StopReceivingThread();
+            var xPos = ReadHubAxis(startingPosition, dataIndex++);
+            var yPos = ReadHubAxis(startingPosition, dataIndex++);
+            var zPos = ReadHubAxis(startingPosition, dataIndex++);
+            axisOutputData.hubData.position = new Vector3(-xPos, yPos, zPos);
         }
     }
 }

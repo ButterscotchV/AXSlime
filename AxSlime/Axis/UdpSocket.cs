@@ -3,237 +3,196 @@ using System.Net.Sockets;
 
 namespace Axis.Communication
 {
-    public class UdpSocket
+    public class UdpSocket : IDisposable
     {
-        public bool isTxStarted = false;
+        private static readonly IPAddress _rawAddr = new(new byte[] { 239, 255, 239, 172 });
+        private static readonly IPAddress _messageAddr = new(new byte[] { 239, 255, 239, 174 });
 
-        private string commandIP = "127.0.0.1"; // local host
+        private bool _isRunning = false;
+        private bool _isTxStarted = false;
 
-        private int rxPort = 45069; // port to receive data from Python on
+        /// <summary>
+        /// The server's endpoint.
+        /// </summary>
+        private readonly IPEndPoint _commandEndPoint;
+        private UdpClient? _commandClient;
 
-        private int txPort = 45068; // port to send data to Python on
+        /// <summary>
+        /// Raw data receive port.
+        /// </summary>
+        private readonly int _multicastPort;
 
-        // Create necessary UdpClient objects
-        private UdpClient _commandClient;
-        private IPEndPoint _commandRemoteEndPoint;
+        /// <summary>
+        /// Message data receive port.
+        /// </summary>
+        private readonly int _messagePort;
 
-        protected Thread RawDataReceiveThread; // Receiving Thread
-        protected byte[] DataInBytes;
-        protected bool DataWaitingForProcessing = false;
-        private UdpClient _dataClient;
+        private CancellationTokenSource? _cancelTokenSource;
 
-        protected Thread MessageReceiveThread;
-        protected byte[] MessageInBytes;
-        protected bool MessageWaitingForProcessing = false;
+        private Task? _rawReceiveTask;
+        private readonly byte[] _dataInBuffer = new byte[1024];
+        private int _dataInLength = 0;
 
-        public void SendData(byte[] data)
+        private Task? _messageReceiveTask;
+        private readonly byte[] _messageInBuffer = new byte[1024];
+        private int _messageInLength = 0;
+
+        protected event EventHandler? OnDataIn;
+        protected event EventHandler? OnMessageIn;
+
+        public UdpSocket(
+            IPEndPoint? commandEndPoint = null,
+            int multicastPort = 45071,
+            int messagePort = 45069
+        )
         {
-            try
-            {
-                _commandClient?.Send(data, data.Length, _commandRemoteEndPoint);
-            }
-            catch (Exception err)
-            {
-                if (err is ObjectDisposedException)
-                {
-                    //Debug.Log("Got it");
-                }
-                else
-                {
-                    Console.Error.WriteLine(err.ToString());
-                }
-            }
+            _commandEndPoint = commandEndPoint ?? new IPEndPoint(IPAddress.Loopback, 45068);
+            _multicastPort = multicastPort;
+            _messagePort = messagePort;
         }
 
-        int multicastPort = 45071;
+        protected Span<byte> DataIn =>
+            _dataInLength > 0 ? _dataInBuffer.AsSpan(0, _dataInLength) : [];
+        protected Span<byte> MessageIn =>
+            _messageInLength > 0 ? _messageInBuffer.AsSpan(0, _messageInLength) : [];
 
-        //int _rawDataPort = 45071;
-        IPEndPoint _rawDataIp;
-        IPEndPoint _messageDataIp;
+        public bool IsRunning => _isRunning;
+        public bool IsTxStarted => _isTxStarted;
 
-        protected void StartReceiveThread()
+        private static Socket CreateSocket(IPAddress addr, IPEndPoint endPoint)
         {
-            CreateCommandUpdClient();
-            // Create a new thread for reception of incoming messages
-            var rawDataSocket = CreateRawDataSocket();
-            StartRawDataReceiveThread(rawDataSocket);
-
-            var messageSocket = CreateMessageReceivingSocket();
-            StartMessageReceiveThread(messageSocket);
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            socket.Bind(endPoint);
+            socket.SetSocketOption(
+                SocketOptionLevel.IP,
+                SocketOptionName.AddMembership,
+                new MulticastOption(addr, IPAddress.Any)
+            );
+            return socket;
         }
 
-        private void CreateCommandUpdClient()
+        public void Start()
         {
-            _commandRemoteEndPoint = new IPEndPoint(IPAddress.Parse(commandIP), txPort);
+            if (_isRunning)
+                return;
+
+            _cancelTokenSource = new CancellationTokenSource();
+
+            // Create command client
             _commandClient = new UdpClient();
             _commandClient.Client.SetSocketOption(
                 SocketOptionLevel.Socket,
                 SocketOptionName.ReuseAddress,
                 true
             );
+
+            // Create raw receive loop
+            _rawReceiveTask = ReceiveRawData(_cancelTokenSource.Token);
+
+            // Create message receive loop
+            _messageReceiveTask = ReceiveMessage(_cancelTokenSource.Token);
+
+            _isRunning = true;
         }
 
-        private void StartRawDataReceiveThread(Socket rawDataSocket)
+        public void Stop()
         {
-            RawDataReceiveThread = new Thread(() => ReceiveRawData(rawDataSocket));
-            RawDataReceiveThread.IsBackground = true;
-            RawDataReceiveThread.Start();
+            if (!_isRunning)
+                return;
+
+            _cancelTokenSource?.Cancel();
+            _rawReceiveTask?.Wait();
+            _messageReceiveTask?.Wait();
+            _cancelTokenSource?.Dispose();
+            _commandClient?.Close();
+
+            _rawReceiveTask = null;
+            _messageReceiveTask = null;
+            _commandClient = null;
+            _cancelTokenSource = null;
+
+            _isRunning = false;
         }
 
-        private void StartMessageReceiveThread(Socket messageSocket)
+        public void SendData(byte[] data)
         {
-            MessageReceiveThread = new Thread(() => ReceiveMessage(messageSocket));
-            MessageReceiveThread.IsBackground = true;
-            MessageReceiveThread.Start();
+            try
+            {
+                _commandClient?.Send(data, data.Length, _commandEndPoint);
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine(e);
+            }
         }
 
-        private Socket CreateMessageReceivingSocket()
+        private async Task ReceiveRawData(CancellationToken cancelToken = default)
         {
-            var messageAddress = IPAddress.Parse("239.255.239.174");
-            _messageDataIp = new IPEndPoint(IPAddress.Any, rxPort);
-            var messageSocket = new Socket(
-                AddressFamily.InterNetwork,
-                SocketType.Dgram,
-                ProtocolType.Udp
+            using var socket = CreateSocket(
+                _rawAddr,
+                new IPEndPoint(IPAddress.Any, _multicastPort)
             );
-            messageSocket.SetSocketOption(
-                SocketOptionLevel.Socket,
-                SocketOptionName.ReuseAddress,
-                true
-            );
-
-            messageSocket.Bind(_messageDataIp);
-            messageSocket.SetSocketOption(
-                SocketOptionLevel.IP,
-                SocketOptionName.AddMembership,
-                new MulticastOption(messageAddress, IPAddress.Any)
-            );
-            return messageSocket;
-        }
-
-        private Socket CreateRawDataSocket()
-        {
-            var rawDataGroupAddress = IPAddress.Parse("239.255.239.172");
-            _rawDataIp = new IPEndPoint(IPAddress.Any, multicastPort);
-            var rawDataSocket = new Socket(
-                AddressFamily.InterNetwork,
-                SocketType.Dgram,
-                ProtocolType.Udp
-            );
-            rawDataSocket.SetSocketOption(
-                SocketOptionLevel.Socket,
-                SocketOptionName.ReuseAddress,
-                true
-            );
-            rawDataSocket.Bind(_rawDataIp);
-            rawDataSocket.SetSocketOption(
-                SocketOptionLevel.IP,
-                SocketOptionName.AddMembership,
-                new MulticastOption(rawDataGroupAddress, IPAddress.Any)
-            );
-            return rawDataSocket;
-        }
-
-        // Receive data, update packets received
-        private void ReceiveRawData(Socket socket)
-        {
-            // Debug.Log("Test");
-            while (RawDataReceiveThread != null && RawDataReceiveThread.IsAlive)
+            EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
+            while (!cancelToken.IsCancellationRequested)
             {
                 try
                 {
-                    EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
+                    var result = await socket.ReceiveFromAsync(
+                        _dataInBuffer,
+                        remoteEp,
+                        cancelToken
+                    );
+                    _dataInLength = result.ReceivedBytes;
+                    remoteEp = result.RemoteEndPoint;
 
-                    var buffer = new byte[1024];
-                    var bytesRead = socket.ReceiveFrom(buffer, ref remoteEp);
-
-                    if (bytesRead <= 0)
+                    if (_dataInLength <= 0)
                         continue;
-
-                    DataInBytes = new byte[bytesRead];
-                    Array.Copy(buffer, DataInBytes, bytesRead);
-                    DataWaitingForProcessing = true;
-
-                    if (!isTxStarted) // First data arrived so tx started
-                    {
-                        isTxStarted = true;
-                    }
-
-                    //ProcessInput(dataInBytes);
+                    _isTxStarted = true; // First data arrived so tx started
+                    OnDataIn?.Invoke(this, EventArgs.Empty);
                 }
-                catch (Exception err)
+                catch (Exception e)
                 {
-                    if (err is ThreadAbortException) { }
-                    else
-                    {
-                        Console.Error.WriteLine(err.ToString());
-                    }
+                    Console.Error.WriteLine(e);
                 }
             }
         }
 
-        private void ReceiveMessage(Socket socket)
+        private async Task ReceiveMessage(CancellationToken cancelToken = default)
         {
-            while (MessageReceiveThread != null && MessageReceiveThread.IsAlive)
+            using var socket = CreateSocket(
+                _messageAddr,
+                new IPEndPoint(IPAddress.Any, _messagePort)
+            );
+            EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
+            while (!cancelToken.IsCancellationRequested)
             {
-                //try
-                //{
-                //    EndPoint remoteEp = new IPEndPoint(IPAddress.Parse("239.255.239.174"), rxPort);
-                //    var debugBuffer = new byte[] { 0, 1, 2, 3, 4, 5 };
-                //    socket.SendTo(debugBuffer, remoteEp);
-                //}
-                //catch (Exception err)
-                //{
-                //    if (err is ThreadAbortException)
-                //    {
-                //    }
-                //    else
-                //    {
-                //        print(err.ToString());
-                //    }
-                //}
                 try
                 {
-                    EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
+                    var result = await socket.ReceiveFromAsync(
+                        _messageInBuffer,
+                        remoteEp,
+                        cancelToken
+                    );
+                    _messageInLength = result.ReceivedBytes;
+                    remoteEp = result.RemoteEndPoint;
 
-                    var buffer = new byte[1024];
-
-                    var bytesRead = socket.ReceiveFrom(buffer, ref remoteEp);
-                    //Debug.Log("Getting message");
-                    if (bytesRead <= 0)
+                    if (_messageInLength <= 0)
                         continue;
-
-                    MessageInBytes = new byte[bytesRead];
-                    Array.Copy(buffer, MessageInBytes, bytesRead);
-                    MessageWaitingForProcessing = true;
+                    OnMessageIn?.Invoke(this, EventArgs.Empty);
                 }
-                catch (Exception err)
+                catch (Exception e)
                 {
-                    if (err is ThreadAbortException) { }
-                    else
-                    {
-                        Console.Error.WriteLine(err.ToString());
-                    }
+                    Console.Error.WriteLine(e);
                 }
             }
         }
 
-        //Prevent crashes - close clients and threads properly!
-        protected void StopReceivingThread()
+        public void Dispose()
         {
-            if (RawDataReceiveThread != null)
-            {
-                RawDataReceiveThread.Abort();
-            }
-            if (MessageReceiveThread != null)
-            {
-                MessageReceiveThread.Abort();
-            }
-
-            if (_commandClient != null)
-            {
-                _commandClient.Close();
-            }
+            Stop();
+            GC.SuppressFinalize(this);
         }
     }
 }
