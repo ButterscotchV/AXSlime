@@ -17,7 +17,7 @@ namespace AxSlime.Axis
         SinglePoseCalibration
     }
 
-    public class AxisRuntimeCommander(AxisRuntimeUdpSocket axisUdpSocket)
+    public class AxisCommander(AxisUdpSocket axisUdpSocket)
     {
         private static readonly Dictionary<CommandType, byte[]> _cmdBytes =
             new()
@@ -40,7 +40,7 @@ namespace AxSlime.Axis
             .Select(c => _cmdBytes[c])
             .ToArray();
 
-        private readonly AxisRuntimeUdpSocket _axisUdpSocket = axisUdpSocket;
+        private readonly AxisUdpSocket _axisUdpSocket = axisUdpSocket;
 
         private static byte GetByteFromNormalizedFloat(float normalizedFloat)
         {
@@ -62,33 +62,33 @@ namespace AxSlime.Axis
             _axisUdpSocket.SendData([.. ToBytes(CommandType.MainHeader), .. ToBytes(command)]);
         }
 
-        private void StartStreaming()
+        public void StartStreaming()
         {
             SendCommand(CommandType.StartStreaming);
             SendCommand(CommandType.SetStreamingMode);
         }
 
-        private void StopStream()
+        public void StopStreaming()
         {
             SendCommand(CommandType.StopStreaming);
         }
 
-        private void Reboot()
+        public void Reboot()
         {
             SendCommandWithHeader(CommandType.Calibration);
         }
 
-        private void ZeroAll()
+        public void ZeroAll()
         {
             SendCommandWithHeader(CommandType.ImuZero);
         }
 
-        private void SinglePoseCalibration()
+        public void SinglePoseCalibration()
         {
             SendCommandWithHeader(CommandType.SinglePoseCalibration);
         }
 
-        private void SetNodeVibration(byte nodeIndex, float intensity, float durationSeconds)
+        public void SetNodeVibration(byte nodeIndex, float intensity, float durationSeconds)
         {
             _axisUdpSocket.SendData(
                 [
@@ -101,7 +101,7 @@ namespace AxSlime.Axis
             );
         }
 
-        private void SetNodeLedColor(byte nodeIndex, Color color, float brightness)
+        public void SetNodeLedColor(byte nodeIndex, Color color, float brightness)
         {
             brightness = brightness > 1f ? 1f / 3f : brightness / 3f;
 

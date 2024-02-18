@@ -9,7 +9,7 @@ static void OnTrackerData(object? sender, AxisOutputData data)
 
 try
 {
-    using var axisSocket = new AxisRuntimeUdpSocket();
+    using var axisSocket = new AxisUdpSocket();
     axisSocket.OnAxisData += OnTrackerData;
     axisSocket.Start();
 

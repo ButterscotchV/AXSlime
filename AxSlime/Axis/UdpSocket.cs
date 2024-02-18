@@ -37,9 +37,6 @@ namespace AxSlime.Axis
         private readonly byte[] _messageInBuffer = new byte[1024];
         private int _messageInLength = 0;
 
-        protected event EventHandler? OnDataIn;
-        protected event EventHandler? OnMessageIn;
-
         public UdpSocket(
             IPEndPoint? commandEndPoint = null,
             int multicastPort = 45071,
@@ -72,7 +69,7 @@ namespace AxSlime.Axis
             return socket;
         }
 
-        public void Start()
+        public virtual void Start()
         {
             if (_isRunning)
                 return;
@@ -96,7 +93,7 @@ namespace AxSlime.Axis
             _isRunning = true;
         }
 
-        public void Stop()
+        public virtual void Stop()
         {
             if (!_isRunning)
                 return;
@@ -114,6 +111,10 @@ namespace AxSlime.Axis
 
             _isRunning = false;
         }
+
+        protected virtual void OnDataIn() { }
+
+        protected virtual void OnMessageIn() { }
 
         public void SendData(byte[] data)
         {
@@ -150,7 +151,7 @@ namespace AxSlime.Axis
                     if (_dataInLength <= 0)
                         continue;
                     _isTxStarted = true; // First data arrived so tx started
-                    OnDataIn?.Invoke(this, EventArgs.Empty);
+                    OnDataIn();
                 }
                 catch (OperationCanceledException) { }
                 catch (Exception e)
@@ -181,7 +182,7 @@ namespace AxSlime.Axis
 
                     if (_messageInLength <= 0)
                         continue;
-                    OnMessageIn?.Invoke(this, EventArgs.Empty);
+                    OnMessageIn();
                 }
                 catch (OperationCanceledException) { }
                 catch (Exception e)

@@ -4,9 +4,10 @@ using System.Numerics;
 
 namespace AxSlime.Axis
 {
-    public class AxisRuntimeUdpSocket : UdpSocket
+    public class AxisUdpSocket : UdpSocket
     {
-        public AxisOutputData AxisOutputData = new();
+        public readonly AxisOutputData AxisOutputData = new();
+        public readonly AxisCommander AxisRuntimeCommander;
 
         //Data Packet Characteristics
         private const int DataStartOffset = 6;
@@ -16,17 +17,33 @@ namespace AxSlime.Axis
 
         public event EventHandler<AxisOutputData>? OnAxisData;
 
-        public AxisRuntimeUdpSocket(
+        public AxisUdpSocket(
             IPEndPoint? commandEndPoint = null,
             int multicastPort = 45071,
             int messagePort = 45069
         )
             : base(commandEndPoint, multicastPort, messagePort)
         {
-            OnDataIn += ProcessData;
+            AxisRuntimeCommander = new(this);
         }
 
-        private void ProcessData(object? source, EventArgs e)
+        public override void Start()
+        {
+            if (IsRunning)
+                return;
+            base.Start();
+            AxisRuntimeCommander.StartStreaming();
+        }
+
+        public override void Stop()
+        {
+            if (!IsRunning)
+                return;
+            AxisRuntimeCommander.StopStreaming();
+            base.Stop();
+        }
+
+        protected override void OnDataIn()
         {
             if (DataIn.Length != DataPacketSizeInBytes)
                 return;
