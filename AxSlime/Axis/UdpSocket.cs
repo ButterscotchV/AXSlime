@@ -17,15 +17,8 @@ namespace AxSlime.Axis
         private readonly IPEndPoint _commandEndPoint;
         private UdpClient? _commandClient;
 
-        /// <summary>
-        /// Raw data receive port.
-        /// </summary>
-        private readonly int _multicastPort;
-
-        /// <summary>
-        /// Message data receive port.
-        /// </summary>
-        private readonly int _messagePort;
+        private readonly IPEndPoint _multicastEndPoint;
+        private readonly IPEndPoint _messageEndPoint;
 
         private CancellationTokenSource? _cancelTokenSource;
 
@@ -44,8 +37,8 @@ namespace AxSlime.Axis
         )
         {
             _commandEndPoint = commandEndPoint ?? new IPEndPoint(IPAddress.Loopback, 45068);
-            _multicastPort = multicastPort;
-            _messagePort = messagePort;
+            _multicastEndPoint = new IPEndPoint(IPAddress.Any, multicastPort);
+            _messageEndPoint = new IPEndPoint(IPAddress.Any, messagePort);
         }
 
         protected Span<byte> DataIn =>
@@ -131,10 +124,7 @@ namespace AxSlime.Axis
 
         private async Task ReceiveRawData(CancellationToken cancelToken = default)
         {
-            using var socket = CreateSocket(
-                _rawAddr,
-                new IPEndPoint(IPAddress.Any, _multicastPort)
-            );
+            using var socket = CreateSocket(_rawAddr, _multicastEndPoint);
             EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
             while (!cancelToken.IsCancellationRequested)
             {
@@ -163,10 +153,7 @@ namespace AxSlime.Axis
 
         private async Task ReceiveMessage(CancellationToken cancelToken = default)
         {
-            using var socket = CreateSocket(
-                _messageAddr,
-                new IPEndPoint(IPAddress.Any, _messagePort)
-            );
+            using var socket = CreateSocket(_messageAddr, _messageEndPoint);
             EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
             while (!cancelToken.IsCancellationRequested)
             {
