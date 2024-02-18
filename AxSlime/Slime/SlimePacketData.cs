@@ -119,7 +119,7 @@ namespace AxSlime.Slime
         public PacketMcuType McuType { get; set; } = PacketMcuType.Wrangler;
         public uint FirmwareBuildNumber { get; set; } = 17;
         public string FirmwareVersion { get; set; } = "0.4.0";
-        public int MacAddressOffset { get; set; } = 0;
+        public byte[] MacAddress { get; set; } = PacketUtils.EmptyMacAddress;
 
         public Packet3Handshake()
             : base(SlimeTxPacketType.Handshake) { }
@@ -152,10 +152,7 @@ namespace AxSlime.Slime
             BinaryPrimitives.WriteUInt32BigEndian(buffer[i..], FirmwareBuildNumber);
             i += sizeof(uint);
             i += PacketUtils.SerializeShortString(buffer[i..], FirmwareVersion);
-            i += PacketUtils.SerializeBytes(
-                buffer[i..],
-                PacketUtils.IncrementedMacAddress(PacketUtils.DefaultMacAddress, MacAddressOffset)
-            );
+            i += PacketUtils.SerializeBytes(buffer[i..], MacAddress);
 
             return i;
         }

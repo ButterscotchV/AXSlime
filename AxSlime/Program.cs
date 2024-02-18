@@ -16,12 +16,17 @@ try
 
     using var slimeSocket = new SlimeUdpSocket();
     slimeSocket.Start();
-    slimeSocket.SendPacket(new Packet3Handshake());
+    slimeSocket.SendPacket(new Packet3Handshake() { MacAddress = PacketUtils.DefaultMacAddress });
     slimeSocket.SendPacket(new Packet15SensorInfo());
 
     using var slimeSocket2 = new SlimeUdpSocket();
     slimeSocket2.Start();
-    slimeSocket2.SendPacket(new Packet3Handshake() { MacAddressOffset = 1 });
+    slimeSocket2.SendPacket(
+        new Packet3Handshake()
+        {
+            MacAddress = PacketUtils.IncrementedMacAddress(PacketUtils.DefaultMacAddress, 1)
+        }
+    );
     slimeSocket2.SendPacket(new Packet15SensorInfo());
 
     Console.WriteLine("AXIS receiver is running, press any key to stop the receiver.");
