@@ -42,19 +42,29 @@ namespace AxSlime.Slime
                 ?.GetPhysicalAddress();
         }
 
+        /// <summary>
+        /// An empty MAC address.
+        /// </summary>
         public static readonly byte[] EmptyMacAddress = [0, 0, 0, 0, 0, 0];
-        public static readonly byte[] MacAddress =
+
+        /// <summary>
+        /// A consistent default MAC address for the program.
+        /// </summary>
+        public static readonly byte[] DefaultMacAddress = [103, 243, 78, 68, 103, 134];
+
+        /// <summary>
+        /// The PC's own MAC address, or an empty MAC address if there is none.
+        /// </summary>
+        public static readonly byte[] PcMacAddress =
             GetMacAddress()?.GetAddressBytes() ?? EmptyMacAddress;
 
-        public static byte[] IncrementedMacAddress(int amount)
+        public static byte[] IncrementedMacAddress(byte[] addr, int amount)
         {
             if (amount <= 0)
-                return MacAddress;
+                return addr;
 
-            var addr = GetMacAddress()?.GetAddressBytes();
-            if (addr == null)
-                return EmptyMacAddress;
-
+            // Make a copy before modifying
+            addr = (byte[])addr.Clone();
             for (var i = 0; i < amount; i++)
             {
                 Increment(addr, addr.Length - 1);
@@ -144,7 +154,7 @@ namespace AxSlime.Slime
             i += PacketUtils.SerializeShortString(buffer[i..], FirmwareVersion);
             i += PacketUtils.SerializeBytes(
                 buffer[i..],
-                PacketUtils.IncrementedMacAddress(MacAddressOffset)
+                PacketUtils.IncrementedMacAddress(PacketUtils.DefaultMacAddress, MacAddressOffset)
             );
 
             return i;

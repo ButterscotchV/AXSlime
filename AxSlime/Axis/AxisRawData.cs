@@ -4,9 +4,15 @@ namespace AxSlime.Axis
 {
     public class AxisNodeData
     {
-        public bool IsActive = false;
         private Quaternion _rotation;
 
+        public AxisNodeData(int nodeId)
+        {
+            NodeId = nodeId;
+        }
+
+        public int NodeId { get; }
+        public bool IsActive { get; set; } = false;
         public Quaternion Rotation
         {
             get => _rotation;
@@ -22,9 +28,9 @@ namespace AxSlime.Axis
 
     public class AxisHubData
     {
-        public bool IsActive = false;
         private Quaternion _rotation;
 
+        public bool IsActive { get; set; } = false;
         public Quaternion Rotation
         {
             get => _rotation;
@@ -48,7 +54,7 @@ namespace AxSlime.Axis
         {
             for (var i = 0; i < NodesCount; i++)
             {
-                nodesData[i] = new AxisNodeData();
+                nodesData[i] = new AxisNodeData(i);
             }
         }
     }
