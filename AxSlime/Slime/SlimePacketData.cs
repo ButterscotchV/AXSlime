@@ -262,11 +262,12 @@ namespace AxSlime.Slime
             var i = base.Serialize(buffer);
 
             buffer[i++] = (byte)DataType;
+            // For some reason Y and Z need to be swapped?
             BinaryPrimitives.WriteSingleBigEndian(buffer[i..], Rotation.X);
             i += sizeof(float);
-            BinaryPrimitives.WriteSingleBigEndian(buffer[i..], Rotation.Y);
-            i += sizeof(float);
             BinaryPrimitives.WriteSingleBigEndian(buffer[i..], Rotation.Z);
+            i += sizeof(float);
+            BinaryPrimitives.WriteSingleBigEndian(buffer[i..], Rotation.Y);
             i += sizeof(float);
             BinaryPrimitives.WriteSingleBigEndian(buffer[i..], Rotation.W);
             i += sizeof(float);
