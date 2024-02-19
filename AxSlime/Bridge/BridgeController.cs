@@ -1,3 +1,4 @@
+using System.Numerics;
 using AxSlime.Axis;
 using AxSlime.Slime;
 
@@ -5,6 +6,12 @@ namespace AxSlime.Bridge
 {
     public class BridgeController : IDisposable
     {
+        // 90 degree offset in the X (pitch) axis, this is the match IMU axes
+        public static readonly Quaternion AxesOffset = Quaternion.CreateFromAxisAngle(
+            new Vector3(1f, 0f, 0f),
+            MathF.PI / 2f
+        );
+
         public BridgeController(AxisOutputData axisTrackers)
         {
             AxisTrackers = axisTrackers;
@@ -36,7 +43,7 @@ namespace AxSlime.Bridge
                 RegisterTracker(axis, slime);
             }
 
-            slime.SendPacket(new Packet17RotationData() { Rotation = axis.Rotation });
+            slime.SendPacket(new Packet17RotationData() { Rotation = AxesOffset * axis.Rotation });
 
             if (axis.HasAcceleration)
             {
