@@ -21,6 +21,7 @@ namespace AxSlime.Slime
         private CancellationTokenSource? _cancelTokenSource;
         private Task? _rxTask;
 
+        public bool IsRunning => _isRunning;
         public bool IsConnected => _isConnected;
 
         public SlimeUdpSocket(IPEndPoint? slimeEndPoint = null)
@@ -106,9 +107,6 @@ namespace AxSlime.Slime
                 case SlimeRxPacketType.Heartbeat:
                     SendPacket(new Packet0Heartbeat());
                     break;
-                case SlimeRxPacketType.Handshake:
-                    _isConnected = true;
-                    break;
                 case SlimeRxPacketType.PingPong:
                     var packet = new Packet10PingPong();
                     packet.Deserialize(packetData);
@@ -129,6 +127,7 @@ namespace AxSlime.Slime
                     if (result.Buffer.Length < PacketHeaderLen)
                         continue;
                     OnRxData(result.Buffer);
+                    _isConnected = true;
                 }
                 catch (OperationCanceledException) { }
                 catch (Exception e)
