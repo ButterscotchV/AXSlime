@@ -26,7 +26,12 @@ namespace AxSlime.Bridge
         private void UpdateTracker(AxisTracker axis)
         {
             var slime = (SlimeTrackers[axis.TrackerId] ??= new SlimeUdpSocket());
-            if (!slime.IsRunning)
+            if (!axis.IsActive)
+            {
+                slime.Stop();
+                return;
+            }
+            else if (!slime.IsRunning)
             {
                 RegisterTracker(axis, slime);
             }

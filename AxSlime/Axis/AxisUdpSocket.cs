@@ -92,6 +92,11 @@ namespace AxSlime.Axis
                 var yAccel = ReadAccelAxis(i, dataIndex++);
                 var zAccel = ReadAccelAxis(i, dataIndex++);
                 node.Acceleration = new Vector3(xAccel, yAccel, zAccel);
+
+                node.IsActive =
+                    node.IsActive
+                    || node.Rotation != Quaternion.Identity
+                    || node.Acceleration != Vector3.Zero;
             }
         }
 
@@ -104,6 +109,8 @@ namespace AxSlime.Axis
 
         private void GetDataFromHub(AxisOutputData axisOutputData)
         {
+            var hub = axisOutputData.hubData;
+
             var startingPosition = DataIn.Length - 28;
             var dataIndex = 0;
 
@@ -111,12 +118,15 @@ namespace AxSlime.Axis
             var y = ReadHubAxis(startingPosition, dataIndex++);
             var z = ReadHubAxis(startingPosition, dataIndex++);
             var w = ReadHubAxis(startingPosition, dataIndex++);
-            axisOutputData.hubData.Rotation = new Quaternion(x, y, z, w);
+            hub.Rotation = new Quaternion(x, y, z, w);
 
             var xPos = ReadHubAxis(startingPosition, dataIndex++);
             var yPos = ReadHubAxis(startingPosition, dataIndex++);
             var zPos = ReadHubAxis(startingPosition, dataIndex++);
-            axisOutputData.hubData.Position = new Vector3(-xPos, yPos, zPos);
+            hub.Position = new Vector3(-xPos, yPos, zPos);
+
+            hub.IsActive =
+                hub.IsActive || hub.Rotation != Quaternion.Identity || hub.Position != Vector3.Zero;
         }
     }
 }
