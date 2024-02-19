@@ -6,7 +6,7 @@ namespace AxSlime.Bridge
 {
     public class BridgeController : IDisposable
     {
-        // 90 degree offset in the X (pitch) axis, this is the match IMU axes
+        // 90 degree offset in the X (pitch) axis, this is to match IMU axes
         public static readonly Quaternion AxesOffset = Quaternion.CreateFromAxisAngle(
             new Vector3(1f, 0f, 0f),
             MathF.PI / 2f
