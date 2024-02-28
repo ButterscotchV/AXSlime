@@ -50,6 +50,7 @@ try
             config.HapticVibrationIntensity,
             config.HapticVibrationDurationS,
             oscEndPoint,
+            config.EnableAxHapticsSupport,
             config.EnableBHapticsSupport
         );
         Console.WriteLine($"Started OSC receiver on {oscEndPoint}.");

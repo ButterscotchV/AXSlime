@@ -11,32 +11,33 @@ namespace AxSlime.Osc
         public static readonly string AvatarParamPrefix = "/avatar/parameters/";
         public static readonly string bHapticsPrefix = "bHapticsOSC_";
 
-        private readonly AxisCommander _axisCommander;
-        private readonly float _intensity;
-        private readonly float _durationSeconds;
+        public float HapticsIntensity;
+        public float HapticsDurationSeconds;
+        public bool UseAxHaptics;
+        public bool UseBHaptics;
 
+        private readonly AxisCommander _axisCommander;
         private readonly UdpClient _oscClient;
         private readonly CancellationTokenSource _cancelTokenSource = new();
         private readonly Task _oscReceiveTask;
-
-        private readonly bool _useBHaptics;
 
         public OscHandler(
             AxisCommander axisCommander,
             float intensity = 1f,
             float durationSeconds = 1f,
             IPEndPoint? ipEndPoint = null,
+            bool useAxHaptics = true,
             bool useBHaptics = true
         )
         {
-            _axisCommander = axisCommander;
-            _intensity = intensity;
-            _durationSeconds = durationSeconds;
+            HapticsIntensity = intensity;
+            HapticsDurationSeconds = durationSeconds;
+            UseAxHaptics = useAxHaptics;
+            UseBHaptics = useBHaptics;
 
+            _axisCommander = axisCommander;
             _oscClient = new UdpClient(ipEndPoint ?? new IPEndPoint(IPAddress.Loopback, 9001));
             _oscReceiveTask = OscReceiveTask(_cancelTokenSource.Token);
-
-            _useBHaptics = useBHaptics;
         }
 
         private static bool IsBundle(ReadOnlySpan<byte> buffer)
@@ -107,7 +108,11 @@ namespace AxSlime.Osc
 
             foreach (var node in nodes)
             {
-                _axisCommander.SetNodeVibration((byte)node, _intensity, _durationSeconds);
+                _axisCommander.SetNodeVibration(
+                    (byte)node,
+                    HapticsIntensity,
+                    HapticsDurationSeconds
+                );
             }
         }
 
@@ -117,29 +122,33 @@ namespace AxSlime.Osc
                 return null;
 
             var param = address[AvatarParamPrefix.Length..];
-            switch (param)
+
+            if (UseAxHaptics)
             {
-                case "VRCOSC/AXHaptics/IsRightThighHapticActive":
-                    return [NodeBinding.RightThigh];
-                case "VRCOSC/AXHaptics/IsRightCalfHapticActive":
-                    return [NodeBinding.RightCalf];
-                case "VRCOSC/AXHaptics/IsLeftThighHapticActive":
-                    return [NodeBinding.LeftThigh];
-                case "VRCOSC/AXHaptics/IsLeftCalfHapticActive":
-                    return [NodeBinding.LeftCalf];
-                case "VRCOSC/AXHaptics/IsRightUpperArmHapticActive":
-                    return [NodeBinding.RightUpperArm];
-                case "VRCOSC/AXHaptics/IsRightForearmHapticActive":
-                    return [NodeBinding.RightForeArm];
-                case "VRCOSC/AXHaptics/IsLeftUpperArmHapticActive":
-                    return [NodeBinding.LeftUpperArm];
-                case "VRCOSC/AXHaptics/IsLeftForearmHapticActive":
-                    return [NodeBinding.LeftForeArm];
-                case "VRCOSC/AXHaptics/IsChestHapticActive":
-                    return [NodeBinding.Chest];
+                switch (param)
+                {
+                    case "VRCOSC/AXHaptics/IsRightThighHapticActive":
+                        return [NodeBinding.RightThigh];
+                    case "VRCOSC/AXHaptics/IsRightCalfHapticActive":
+                        return [NodeBinding.RightCalf];
+                    case "VRCOSC/AXHaptics/IsLeftThighHapticActive":
+                        return [NodeBinding.LeftThigh];
+                    case "VRCOSC/AXHaptics/IsLeftCalfHapticActive":
+                        return [NodeBinding.LeftCalf];
+                    case "VRCOSC/AXHaptics/IsRightUpperArmHapticActive":
+                        return [NodeBinding.RightUpperArm];
+                    case "VRCOSC/AXHaptics/IsRightForearmHapticActive":
+                        return [NodeBinding.RightForeArm];
+                    case "VRCOSC/AXHaptics/IsLeftUpperArmHapticActive":
+                        return [NodeBinding.LeftUpperArm];
+                    case "VRCOSC/AXHaptics/IsLeftForearmHapticActive":
+                        return [NodeBinding.LeftForeArm];
+                    case "VRCOSC/AXHaptics/IsChestHapticActive":
+                        return [NodeBinding.Chest];
+                }
             }
 
-            if (_useBHaptics && param.StartsWith(bHapticsPrefix))
+            if (UseBHaptics && param.StartsWith(bHapticsPrefix))
             {
                 var bHaptics = param[bHapticsPrefix.Length..];
                 if (bHaptics.StartsWith("Vest_Front") || bHaptics.StartsWith("Vest_Back"))
