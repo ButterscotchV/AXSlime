@@ -25,6 +25,9 @@ namespace AxSlime.Config
         [JsonPropertyName("haptic_vibration_duration_s")]
         public float HapticVibrationDurationS { get; set; } = 1f;
 
+        [JsonPropertyName("enable_bhaptics_support")]
+        public bool EnableBHapticsSupport { get; set; } = true;
+
         // Ease of use utilities
         [JsonIgnore]
         public IPEndPoint SlimeVrEndPoint => IPEndPoint.Parse(SlimeVrEndPointStr);

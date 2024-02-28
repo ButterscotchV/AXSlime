@@ -19,18 +19,24 @@ namespace AxSlime.Osc
         private readonly CancellationTokenSource _cancelTokenSource = new();
         private readonly Task _oscReceiveTask;
 
+        private readonly bool _useBHaptics;
+
         public OscHandler(
             AxisCommander axisCommander,
             float intensity = 1f,
             float durationSeconds = 1f,
-            IPEndPoint? ipEndPoint = null
+            IPEndPoint? ipEndPoint = null,
+            bool useBHaptics = true
         )
         {
             _axisCommander = axisCommander;
             _intensity = intensity;
             _durationSeconds = durationSeconds;
+
             _oscClient = new UdpClient(ipEndPoint ?? new IPEndPoint(IPAddress.Loopback, 9001));
             _oscReceiveTask = OscReceiveTask(_cancelTokenSource.Token);
+
+            _useBHaptics = useBHaptics;
         }
 
         private static bool IsBundle(ReadOnlySpan<byte> buffer)
@@ -105,7 +111,7 @@ namespace AxSlime.Osc
             }
         }
 
-        private static NodeBinding[]? GetNodesFromAddress(string address)
+        private NodeBinding[]? GetNodesFromAddress(string address)
         {
             if (address.Length <= AvatarParamPrefix.Length)
                 return null;
@@ -133,7 +139,7 @@ namespace AxSlime.Osc
                     return [NodeBinding.Chest];
             }
 
-            if (param.StartsWith(bHapticsPrefix))
+            if (_useBHaptics && param.StartsWith(bHapticsPrefix))
             {
                 var bHaptics = param[bHapticsPrefix.Length..];
                 if (bHaptics.StartsWith("Vest_Front") || bHaptics.StartsWith("Vest_Back"))

@@ -49,7 +49,8 @@ try
             axisSocket.AxisRuntimeCommander,
             config.HapticVibrationIntensity,
             config.HapticVibrationDurationS,
-            oscEndPoint
+            oscEndPoint,
+            config.EnableBHapticsSupport
         );
         Console.WriteLine($"Started OSC receiver on {oscEndPoint}.");
     }
