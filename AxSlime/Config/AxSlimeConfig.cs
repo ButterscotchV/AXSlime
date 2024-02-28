@@ -8,13 +8,29 @@ namespace AxSlime.Config
         public static readonly AxSlimeConfig Default = new();
 
         [JsonPropertyName("config_version")]
-        public int ConfigVersion { get; set; } = 0;
+        public int ConfigVersion { get; set; } = 1;
 
         [JsonPropertyName("slimevr_endpoint")]
         public string SlimeVrEndPointStr { get; set; } = "127.0.0.1:6969";
 
+        [JsonPropertyName("osc_enabled")]
+        public bool OscEnabled { get; set; } = false;
+
+        [JsonPropertyName("osc_receive_endpoint")]
+        public string OscReceiveEndPointStr { get; set; } = "127.0.0.1:9001";
+
+        [JsonPropertyName("haptic_vibration_intensity")]
+        public float HapticVibrationIntensity { get; set; } = 1f;
+
+        [JsonPropertyName("haptic_vibration_duration_s")]
+        public float HapticVibrationDurationS { get; set; } = 1f;
+
+        // Ease of use utilities
         [JsonIgnore]
         public IPEndPoint SlimeVrEndPoint => IPEndPoint.Parse(SlimeVrEndPointStr);
+
+        [JsonIgnore]
+        public IPEndPoint OscReceiveEndPoint => IPEndPoint.Parse(OscReceiveEndPointStr);
     }
 
     [JsonSerializable(typeof(AxSlimeConfig))]

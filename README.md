@@ -10,3 +10,7 @@ A bridge to make AXIS trackers work with SlimeVR.
   - <https://github.com/SlimeVR/>
   - <https://github.com/SlimeVR/SlimeVR-Server>
   - <https://github.com/SlimeVR/SlimeVR-Tracker-ESP>
+- CoreOSC
+  - <https://github.com/LucHeart/CoreOSC-UTF8-ASYNC>
+- AxHaptics
+  - <https://github.com/TahvoDev/AxHaptics>

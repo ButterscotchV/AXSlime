@@ -2,8 +2,10 @@ using AxSlime;
 using AxSlime.Axis;
 using AxSlime.Bridge;
 using AxSlime.Config;
+using AxSlime.Osc;
 
 AxSlimeConfig config;
+OscHandler? oscHandler = null;
 BridgeController? bridge = null;
 void OnTrackerData(object? sender, AxisOutputData data)
 {
@@ -40,6 +42,16 @@ try
     axisSocket.OnAxisData += OnTrackerData;
     axisSocket.Start();
 
+    if (config.OscEnabled)
+    {
+        oscHandler = new OscHandler(
+            axisSocket.AxisRuntimeCommander,
+            config.HapticVibrationIntensity,
+            config.HapticVibrationDurationS,
+            config.OscReceiveEndPoint
+        );
+    }
+
     Console.WriteLine("AXIS receiver is running, press any key to stop the receiver.");
     Console.ReadKey();
 }
@@ -49,6 +61,7 @@ catch (Exception e)
 }
 finally
 {
+    oscHandler?.Dispose();
     bridge?.Dispose();
 }
 

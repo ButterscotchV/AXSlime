@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace AxSlime.Axis
 {
-    public enum NodeBinding
+    public enum NodeBinding : byte
     {
         RightThigh,
         RightCalf,
