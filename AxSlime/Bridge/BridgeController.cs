@@ -8,7 +8,7 @@ namespace AxSlime.Bridge
     {
         // 90 degree offset in the X (pitch) axis, this is to match IMU axes
         public static readonly Quaternion AxesOffset = Quaternion.CreateFromAxisAngle(
-            new Vector3(0f, 0f, 1f),
+            new Vector3(1f, 0f, 0f),
             MathF.PI / 2f
         );
 
@@ -43,10 +43,10 @@ namespace AxSlime.Bridge
                 RegisterTracker(axis, slime);
             }
 
-            Quaternion jankQuat = new Quaternion( //Quaternion Left to right convert (or right to left idk)
+            Quaternion jankQuat = new Quaternion( //Quaternion Left to right convert
                 -axis.Rotation.X,
-                -axis.Rotation.Z,
                 axis.Rotation.Y,
+                axis.Rotation.Z,
                 axis.Rotation.W
             );
 
