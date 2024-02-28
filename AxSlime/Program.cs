@@ -44,12 +44,14 @@ try
 
     if (config.OscEnabled)
     {
+        var oscEndPoint = config.OscReceiveEndPoint;
         oscHandler = new OscHandler(
             axisSocket.AxisRuntimeCommander,
             config.HapticVibrationIntensity,
             config.HapticVibrationDurationS,
-            config.OscReceiveEndPoint
+            oscEndPoint
         );
+        Console.WriteLine($"Started OSC receiver on {oscEndPoint}.");
     }
 
     Console.WriteLine("AXIS receiver is running, press any key to stop the receiver.");
