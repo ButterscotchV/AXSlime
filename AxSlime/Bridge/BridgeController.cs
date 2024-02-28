@@ -44,15 +44,13 @@ namespace AxSlime.Bridge
             }
 
             Quaternion jankQuat = new Quaternion( //Quaternion Left to right convert (or right to left idk)
-                axis.Rotation.X,
-                axis.Rotation.Z,
-                -axis.Rotation.Y,
+                -axis.Rotation.X,
+                -axis.Rotation.Z,
+                axis.Rotation.Y,
                 axis.Rotation.W
             );
 
-            slime.SendPacket(
-                new Packet17RotationData() { Rotation = AxesOffset * Quaternion.Inverse(jankQuat) }
-            );
+            slime.SendPacket(new Packet17RotationData() { Rotation = AxesOffset * jankQuat });
 
             if (axis.HasAcceleration)
             {
