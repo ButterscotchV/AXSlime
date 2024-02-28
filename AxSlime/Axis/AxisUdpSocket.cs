@@ -9,12 +9,33 @@ namespace AxSlime.Axis
         public readonly AxisOutputData AxisOutputData = new();
         public readonly AxisCommander AxisRuntimeCommander;
 
-        //Data Packet Characteristics
+        // Data packet details
+        /// <summary>
+        /// 6 bytes, unsure what this is
+        /// </summary>
         private const int DataStartOffset = 6;
-        private const int DataPacketSizeInBytes = 290;
+
+        /// <summary>
+        /// 1 byte
+        /// </summary>
         private const int NodeIndexOffset = sizeof(byte);
+
+        /// <summary>
+        /// 15 bytes
+        /// </summary>
         private const int NodeDataSize = NodeIndexOffset + (sizeof(short) * 7);
+
+        /// <summary>
+        /// 28 bytes
+        /// </summary>
         private const int HubDataSize = sizeof(float) * 7;
+
+        /// <summary>
+        /// 290 bytes, unsure why there is an extra byte than the full data, it must be
+        /// between node data and hub data... Maybe it's a hub data index?
+        /// </summary>
+        private const int DataPacketSize =
+            DataStartOffset + (NodeDataSize * AxisOutputData.NodesCount) + 1 + HubDataSize;
 
         public event EventHandler<AxisOutputData>? OnAxisData;
 
@@ -46,7 +67,7 @@ namespace AxSlime.Axis
 
         protected override void OnDataIn()
         {
-            if (DataIn.Length != DataPacketSizeInBytes)
+            if (DataIn.Length != DataPacketSize)
                 return;
 
             var packetData = DataIn[DataStartOffset..];

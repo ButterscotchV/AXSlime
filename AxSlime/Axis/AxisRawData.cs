@@ -75,10 +75,13 @@ namespace AxSlime.Axis
             new(default, TimeSpan.FromMinutes(1));
 
         public int NodeId { get; } = nodeId;
+        public NodeBinding NodeBinding { get; } = (NodeBinding)nodeId;
         public int TrackerId => NodeId + 1;
+
         public bool HasMovement => _rotation.IsActive;
         public bool IsConnected { get; set; } = false;
         public bool IsActive => IsConnected || HasMovement;
+
         public Quaternion Rotation
         {
             get => _rotation.Value;
@@ -104,8 +107,10 @@ namespace AxSlime.Axis
         private readonly ChangeTimeout<Vector3> _position = new(default, TimeSpan.FromMinutes(1));
 
         public int TrackerId => 0;
+
         public bool HasMovement => _rotation.IsActive;
         public bool IsActive => HasMovement;
+
         public Quaternion Rotation
         {
             get => _rotation.Value;
