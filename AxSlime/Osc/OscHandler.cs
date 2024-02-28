@@ -8,6 +8,8 @@ namespace AxSlime.Osc
 {
     public class OscHandler : IDisposable
     {
+        public static readonly string AvatarParamPrefix = "/avatar/parameters/";
+
         private readonly AxisCommander _axisCommander;
         private readonly float _intensity;
         private readonly float _durationSeconds;
@@ -99,7 +101,10 @@ namespace AxSlime.Osc
 
         private static NodeBinding? GetNodeFromAddress(string address)
         {
-            switch (address)
+            if (address.Length <= AvatarParamPrefix.Length)
+                return null;
+
+            switch (address[AvatarParamPrefix.Length..])
             {
                 case "VRCOSC/AXHaptics/IsRightThighHapticActive":
                     return NodeBinding.RightThigh;
