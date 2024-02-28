@@ -11,9 +11,10 @@ namespace AxSlime.Axis
 
         //Data Packet Characteristics
         private const int DataStartOffset = 6;
-        private const int NodeIndexOffset = 1;
-        private const int DataSize = 15;
         private const int DataPacketSizeInBytes = 290;
+        private const int NodeIndexOffset = sizeof(byte);
+        private const int NodeDataSize = NodeIndexOffset + (sizeof(short) * 7);
+        private const int HubDataSize = sizeof(float) * 7;
 
         public event EventHandler<AxisOutputData>? OnAxisData;
 
@@ -48,77 +49,83 @@ namespace AxSlime.Axis
             if (DataIn.Length != DataPacketSizeInBytes)
                 return;
 
-            GetDataFromHub(AxisOutputData);
-            GetDataFromNodes(AxisOutputData);
+            var packetData = DataIn[DataStartOffset..];
+            GetDataFromNodes(packetData, AxisOutputData);
+            GetDataFromHub(packetData, AxisOutputData);
 
             OnAxisData?.Invoke(this, AxisOutputData);
         }
 
-        private static int GetAxisIndex(int i, int dataIndex)
+        private static float ReadQuatAxis(ReadOnlySpan<byte> data)
         {
-            return DataStartOffset + (i * DataSize) + (dataIndex * sizeof(short)) + NodeIndexOffset;
+            return BinaryPrimitives.ReadInt16LittleEndian(data) * 0.00006103f;
         }
 
-        private float ReadShort(int i, int dataIndex)
+        private static float ReadAccelAxis(ReadOnlySpan<byte> data)
         {
-            return BinaryPrimitives.ReadInt16LittleEndian(DataIn[GetAxisIndex(i, dataIndex)..]);
+            return BinaryPrimitives.ReadInt16LittleEndian(data) * 0.00390625f;
         }
 
-        private float ReadQuatAxis(int i, int dataIndex)
+        private static int GetDataFromNodes(ReadOnlySpan<byte> data, AxisOutputData axisOutputData)
         {
-            return ReadShort(i, dataIndex) * 0.00006103f;
-        }
-
-        private float ReadAccelAxis(int i, int dataIndex)
-        {
-            return ReadShort(i, dataIndex) * 0.00390625f;
-        }
-
-        private void GetDataFromNodes(AxisOutputData axisOutputData)
-        {
-            for (var i = 0; i < AxisOutputData.NodesCount; i++)
+            var i = 0;
+            for (var j = 0; j < AxisOutputData.NodesCount; j++)
             {
-                var node = axisOutputData.nodesData[i];
+                var node = axisOutputData.nodesData[j];
 
-                var dataIndex = 0;
+                // Index offset
+                var index = data[i];
+                i += NodeIndexOffset;
+                node.IsConnected = Convert.ToBoolean(index & 0b10000000);
 
-                var x = ReadQuatAxis(i, dataIndex++);
-                var z = ReadQuatAxis(i, dataIndex++);
-                var y = ReadQuatAxis(i, dataIndex++);
-                var w = ReadQuatAxis(i, dataIndex++);
+                var x = ReadQuatAxis(data[i..]);
+                i += sizeof(short);
+                var z = ReadQuatAxis(data[i..]);
+                i += sizeof(short);
+                var y = ReadQuatAxis(data[i..]);
+                i += sizeof(short);
+                var w = ReadQuatAxis(data[i..]);
+                i += sizeof(short);
                 node.Rotation = new Quaternion(x, y, z, w);
 
-                var xAccel = ReadAccelAxis(i, dataIndex++);
-                var yAccel = ReadAccelAxis(i, dataIndex++);
-                var zAccel = ReadAccelAxis(i, dataIndex++);
+                var xAccel = ReadAccelAxis(data[i..]);
+                i += sizeof(short);
+                var yAccel = ReadAccelAxis(data[i..]);
+                i += sizeof(short);
+                var zAccel = ReadAccelAxis(data[i..]);
+                i += sizeof(short);
                 node.Acceleration = new Vector3(xAccel, yAccel, zAccel);
             }
+
+            return i;
         }
 
-        private float ReadHubAxis(int start, int dataIndex)
-        {
-            return BinaryPrimitives.ReadSingleLittleEndian(
-                DataIn[(start + (dataIndex * sizeof(float)))..]
-            );
-        }
-
-        private void GetDataFromHub(AxisOutputData axisOutputData)
+        private static int GetDataFromHub(ReadOnlySpan<byte> data, AxisOutputData axisOutputData)
         {
             var hub = axisOutputData.hubData;
 
-            var startingPosition = DataIn.Length - 28;
-            var dataIndex = 0;
+            var hubData = data[(data.Length - HubDataSize)..];
+            var i = 0;
 
-            var x = ReadHubAxis(startingPosition, dataIndex++);
-            var y = ReadHubAxis(startingPosition, dataIndex++);
-            var z = ReadHubAxis(startingPosition, dataIndex++);
-            var w = ReadHubAxis(startingPosition, dataIndex++);
+            var x = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
+            var y = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
+            var z = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
+            var w = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
             hub.Rotation = new Quaternion(x, y, z, w);
 
-            var xPos = ReadHubAxis(startingPosition, dataIndex++);
-            var yPos = ReadHubAxis(startingPosition, dataIndex++);
-            var zPos = ReadHubAxis(startingPosition, dataIndex++);
+            var xPos = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
+            var yPos = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
+            var zPos = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
+            i += sizeof(float);
             hub.Position = new Vector3(-xPos, yPos, zPos);
+
+            return i;
         }
     }
 }

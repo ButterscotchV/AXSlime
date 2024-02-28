@@ -2,6 +2,27 @@ using System.Numerics;
 
 namespace AxSlime.Axis
 {
+    public enum NodeBinding
+    {
+        RightThigh,
+        RightCalf,
+        LeftThigh,
+        LeftCalf,
+        RightUpperArm,
+        RightForeArm,
+        LeftUpperArm,
+        LeftForeArm,
+        Chest,
+        RightFoot,
+        LeftFoot,
+        RightHand,
+        LeftHand,
+        RightShoulder,
+        LeftShoulder,
+        Head,
+        Hips
+    }
+
     public class ChangeTimeout<T>(T defaultValue, TimeSpan timeout)
     {
         private T _value = defaultValue;
@@ -37,6 +58,7 @@ namespace AxSlime.Axis
     public interface AxisTracker
     {
         public int TrackerId { get; }
+        public bool HasMovement { get; }
         public bool IsActive { get; }
         public Quaternion Rotation { get; }
         public bool HasAcceleration => false;
@@ -54,7 +76,9 @@ namespace AxSlime.Axis
 
         public int NodeId { get; } = nodeId;
         public int TrackerId => NodeId + 1;
-        public bool IsActive => _rotation.IsActive;
+        public bool HasMovement => _rotation.IsActive;
+        public bool IsConnected { get; set; } = false;
+        public bool IsActive => IsConnected || HasMovement;
         public Quaternion Rotation
         {
             get => _rotation.Value;
@@ -80,7 +104,8 @@ namespace AxSlime.Axis
         private readonly ChangeTimeout<Vector3> _position = new(default, TimeSpan.FromMinutes(1));
 
         public int TrackerId => 0;
-        public bool IsActive => _rotation.IsActive;
+        public bool HasMovement => _rotation.IsActive;
+        public bool IsActive => HasMovement;
         public Quaternion Rotation
         {
             get => _rotation.Value;
@@ -101,7 +126,7 @@ namespace AxSlime.Axis
 
     public class AxisOutputData
     {
-        public const int NodesCount = 16;
+        public const int NodesCount = 17;
         public const int TrackerCount = NodesCount + 1;
         public readonly AxisNodeData[] nodesData = new AxisNodeData[NodesCount];
         public readonly AxisHubData hubData = new();
