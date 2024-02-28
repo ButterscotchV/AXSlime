@@ -8,6 +8,8 @@ namespace AxSlime.Osc
 {
     public class OscHandler : IDisposable
     {
+        public static readonly string BundleAddress = "#bundle\0";
+        public static readonly byte[] BundleAddressBytes = Encoding.ASCII.GetBytes(BundleAddress);
         public static readonly string AvatarParamPrefix = "/avatar/parameters/";
         public static readonly string bHapticsPrefix = "bHapticsOSC_";
 
@@ -42,7 +44,7 @@ namespace AxSlime.Osc
 
         private static bool IsBundle(ReadOnlySpan<byte> buffer)
         {
-            return buffer.Length > 16 && Encoding.ASCII.GetString(buffer[..8]) == "#bundle\0";
+            return buffer.Length > 16 && buffer[..8].SequenceEqual(BundleAddressBytes);
         }
 
         private async Task OscReceiveTask(CancellationToken cancelToken = default)
