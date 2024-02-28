@@ -47,14 +47,15 @@ namespace AxSlime.Bridge
                 RegisterTracker(axis, slime);
             }
 
-            Quaternion jankQuat = new Quaternion( //Quaternion Left to right convert
+            // Quaternion left to right conversion
+            Quaternion slimeQuat = new Quaternion(
                 -axis.Rotation.X,
                 axis.Rotation.Y,
                 axis.Rotation.Z,
                 axis.Rotation.W
             );
 
-            slime.SendPacket(new Packet17RotationData() { Rotation = AxesOffset * jankQuat });
+            slime.SendPacket(new Packet17RotationData() { Rotation = AxesOffset * slimeQuat });
 
             if (axis.HasAcceleration)
             {
