@@ -11,12 +11,14 @@ namespace AxSlime.Osc
         public static readonly string BundleAddress = "#bundle\0";
         public static readonly byte[] BundleAddressBytes = Encoding.ASCII.GetBytes(BundleAddress);
         public static readonly string AvatarParamPrefix = "/avatar/parameters/";
-        public static readonly string bHapticsPrefix = "bHapticsOSC_";
 
         public float HapticsIntensity;
         public float HapticsDurationSeconds;
         public bool UseAxHaptics;
         public bool UseBHaptics;
+
+        private readonly AxHaptics _axHaptics = new();
+        private readonly bHaptics _bHaptics = new();
 
         private readonly AxisCommander _axisCommander;
         private readonly UdpClient _oscClient;
@@ -104,74 +106,34 @@ namespace AxSlime.Osc
             if (!trigger)
                 return;
 
-            var nodes = GetNodesFromAddress(message.Address);
-            if (nodes == null)
+            var events = ComputeEvents(message);
+            if (events.Length <= 0)
                 return;
 
-            foreach (var node in nodes)
+            foreach (var @event in events)
             {
                 _axisCommander.SetNodeVibration(
-                    (byte)node,
-                    HapticsIntensity,
-                    HapticsDurationSeconds
+                    (byte)@event.Node,
+                    @event.Intensity ?? HapticsIntensity,
+                    @event.Duration ?? HapticsDurationSeconds
                 );
             }
         }
 
-        private NodeBinding[]? GetNodesFromAddress(string address)
+        private HapticEvent[] ComputeEvents(OscMessage message)
         {
-            if (address.Length <= AvatarParamPrefix.Length)
-                return null;
+            if (message.Address.Length <= AvatarParamPrefix.Length)
+                return [];
 
-            var param = address[AvatarParamPrefix.Length..];
+            var param = message.Address[AvatarParamPrefix.Length..];
 
-            if (UseAxHaptics)
-            {
-                switch (param)
-                {
-                    case "VRCOSC/AXHaptics/IsRightThighHapticActive":
-                        return [NodeBinding.RightThigh];
-                    case "VRCOSC/AXHaptics/IsRightCalfHapticActive":
-                        return [NodeBinding.RightCalf];
-                    case "VRCOSC/AXHaptics/IsLeftThighHapticActive":
-                        return [NodeBinding.LeftThigh];
-                    case "VRCOSC/AXHaptics/IsLeftCalfHapticActive":
-                        return [NodeBinding.LeftCalf];
-                    case "VRCOSC/AXHaptics/IsRightUpperArmHapticActive":
-                        return [NodeBinding.RightUpperArm];
-                    case "VRCOSC/AXHaptics/IsRightForearmHapticActive":
-                        return [NodeBinding.RightForeArm];
-                    case "VRCOSC/AXHaptics/IsLeftUpperArmHapticActive":
-                        return [NodeBinding.LeftUpperArm];
-                    case "VRCOSC/AXHaptics/IsLeftForearmHapticActive":
-                        return [NodeBinding.LeftForeArm];
-                    case "VRCOSC/AXHaptics/IsChestHapticActive":
-                        return [NodeBinding.Chest];
-                }
-            }
+            if (UseAxHaptics && _axHaptics.IsSource(param, message))
+                return _axHaptics.ComputeHaptics(param, message);
 
-            if (UseBHaptics && param.StartsWith(bHapticsPrefix))
-            {
-                var bHaptics = param[bHapticsPrefix.Length..];
-                if (bHaptics.StartsWith("Vest_Front") || bHaptics.StartsWith("Vest_Back"))
-                    return [NodeBinding.Chest, NodeBinding.Hips];
-                else if (bHaptics.StartsWith("Arm_Left"))
-                    return [NodeBinding.LeftUpperArm];
-                else if (bHaptics.StartsWith("Arm_Right"))
-                    return [NodeBinding.RightUpperArm];
-                else if (bHaptics.StartsWith("Foot_Left"))
-                    return [NodeBinding.LeftFoot, NodeBinding.LeftCalf, NodeBinding.LeftThigh];
-                else if (bHaptics.StartsWith("Foot_Right"))
-                    return [NodeBinding.RightFoot, NodeBinding.RightCalf, NodeBinding.RightThigh];
-                else if (bHaptics.StartsWith("Hand_Left"))
-                    return [NodeBinding.LeftHand, NodeBinding.LeftForeArm];
-                else if (bHaptics.StartsWith("Hand_Right"))
-                    return [NodeBinding.RightHand, NodeBinding.RightForeArm];
-                else if (bHaptics.StartsWith("Head"))
-                    return [NodeBinding.Head];
-            }
+            if (UseBHaptics && _bHaptics.IsSource(param, message))
+                return _bHaptics.ComputeHaptics(param, message);
 
-            return null;
+            return [];
         }
 
         public void Dispose()
