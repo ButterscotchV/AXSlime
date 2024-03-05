@@ -9,7 +9,6 @@ OscHandler? oscHandler = null;
 BridgeController? bridge = null;
 void OnTrackerData(object? sender, AxisOutputData data)
 {
-    Console.WriteLine($"AXIS Data: {data}");
     bridge ??= new BridgeController(data, config.SlimeVrEndPoint);
     bridge.Update();
 }
