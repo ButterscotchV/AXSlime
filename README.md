@@ -2,7 +2,7 @@
 
 A bridge to make AXIS trackers work with SlimeVR.
 
-## Usage
+## Usage and Installation
 
 1. Ensure you have [AXIS Control Center](https://downloads.axisxr.gg/cc/beta/default) installed and set up with your trackers.
 2. Ensure you have [SlimeVR](https://slimevr.dev/download) installed.
