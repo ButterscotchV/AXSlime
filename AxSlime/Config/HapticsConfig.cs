@@ -30,8 +30,8 @@ namespace AxSlime.Config
         [JsonPropertyName("proximity_duration_s")]
         public float ProxDurationS { get; set; } = 0.1f;
 
-        [JsonPropertyName("nonlinear_proximity")]
-        public bool NonlinearProx { get; set; } = true;
+        [JsonPropertyName("linear_proximity")]
+        public bool LinearProx { get; set; } = false;
 
         [JsonPropertyName("enable_axhaptics_support")]
         public bool EnableAxHaptics { get; set; } = true;
@@ -43,5 +43,15 @@ namespace AxSlime.Config
 
         [JsonIgnore]
         public float ProxIntensityRange => ProxMaxIntensity - ProxMinIntensity;
+
+        public float CalcIntensity(float proximity)
+        {
+            var scaledProx = LinearProx ? proximity : proximity * proximity;
+            return float.Clamp(
+                ProxMinIntensity + (scaledProx * ProxIntensityRange),
+                ProxMinIntensity,
+                ProxMaxIntensity
+            );
+        }
     }
 }

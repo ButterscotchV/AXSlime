@@ -38,15 +38,7 @@ namespace AxSlime.Osc
                 if (proximity <= _config.Haptics.ProxThreshold)
                     return [];
 
-                proximity = float.Clamp(proximity, 0f, 1f);
-                var scaledProx = _config.Haptics.NonlinearProx ? proximity * proximity : proximity;
-
-                var intensity = float.Clamp(
-                    _config.Haptics.ProxMinIntensity
-                        + (scaledProx * _config.Haptics.ProxIntensityRange),
-                    _config.Haptics.ProxMinIntensity,
-                    _config.Haptics.ProxMaxIntensity
-                );
+                var intensity = _config.Haptics.CalcIntensity(proximity);
                 if (
                     intensity > 0f
                     && _nameToNode.TryGetValue(axHaptics[AnalogPrefix.Length..], out var nodeVal)
