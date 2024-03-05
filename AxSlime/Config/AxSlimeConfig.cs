@@ -19,19 +19,10 @@ namespace AxSlime.Config
         [JsonPropertyName("osc_receive_endpoint")]
         public string OscReceiveEndPointStr { get; set; } = "127.0.0.1:9001";
 
-        [JsonPropertyName("haptic_vibration_intensity")]
-        public float HapticVibrationIntensity { get; set; } = 1f;
+        [JsonPropertyName("haptic_vibration")]
+        public HapticsConfig Haptics { get; set; } = new();
 
-        [JsonPropertyName("haptic_vibration_duration_s")]
-        public float HapticVibrationDurationS { get; set; } = 1f;
-
-        [JsonPropertyName("enable_axhaptics_support")]
-        public bool EnableAxHapticsSupport { get; set; } = true;
-
-        [JsonPropertyName("enable_bhaptics_support")]
-        public bool EnableBHapticsSupport { get; set; } = true;
-
-        // Ease of use utilities
+        // Utilities
 
         [JsonIgnore]
         public IPEndPoint SlimeVrEndPoint => IPEndPoint.Parse(SlimeVrEndPointStr);

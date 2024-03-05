@@ -1,4 +1,5 @@
 using AxSlime.Axis;
+using AxSlime.Config;
 using LucHeart.CoreOSC;
 
 namespace AxSlime.Osc
@@ -31,8 +32,22 @@ namespace AxSlime.Osc
             .Select(m => (m.Key, m.Value.Select(n => new HapticEvent(n)).ToArray()))
             .ToDictionary();
 
+        private readonly AxSlimeConfig _config;
+
+        public bHaptics(AxSlimeConfig config)
+        {
+            _config = config;
+        }
+
         public HapticEvent[] ComputeHaptics(string parameter, OscMessage message)
         {
+            if (!_config.Haptics.EnableTouch)
+                return [];
+
+            var trigger = message.Arguments[0] as bool?;
+            if (trigger != true)
+                return [];
+
             var bHaptics = parameter[bHapticsPrefix.Length..];
             foreach (var binding in _eventMap)
             {
@@ -45,7 +60,7 @@ namespace AxSlime.Osc
 
         public bool IsSource(string parameter, OscMessage message)
         {
-            return parameter.StartsWith(bHapticsPrefix);
+            return _config.Haptics.EnableBHaptics && parameter.StartsWith(bHapticsPrefix);
         }
     }
 }

@@ -1,7 +1,7 @@
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using AxSlime.Axis;
+using AxSlime.Config;
 using LucHeart.CoreOSC;
 
 namespace AxSlime.Osc
@@ -12,36 +12,29 @@ namespace AxSlime.Osc
         public static readonly byte[] BundleAddressBytes = Encoding.ASCII.GetBytes(BundleAddress);
         public static readonly string AvatarParamPrefix = "/avatar/parameters/";
 
-        public float HapticsIntensity;
-        public float HapticsDurationSeconds;
-        public bool UseAxHaptics;
-        public bool UseBHaptics;
-
-        private readonly AxHaptics _axHaptics = new();
-        private readonly bHaptics _bHaptics = new();
-
+        private readonly AxSlimeConfig _config;
         private readonly AxisCommander _axisCommander;
         private readonly UdpClient _oscClient;
+
         private readonly CancellationTokenSource _cancelTokenSource = new();
         private readonly Task _oscReceiveTask;
 
-        public OscHandler(
-            AxisCommander axisCommander,
-            float intensity = 1f,
-            float durationSeconds = 1f,
-            IPEndPoint? ipEndPoint = null,
-            bool useAxHaptics = true,
-            bool useBHaptics = true
-        )
-        {
-            HapticsIntensity = intensity;
-            HapticsDurationSeconds = durationSeconds;
-            UseAxHaptics = useAxHaptics;
-            UseBHaptics = useBHaptics;
+        private readonly AxHaptics _axHaptics;
+        private readonly bHaptics _bHaptics;
 
+        private readonly HapticsSource[] _hapticsSources;
+
+        public OscHandler(AxSlimeConfig config, AxisCommander axisCommander)
+        {
+            _config = config;
             _axisCommander = axisCommander;
-            _oscClient = new UdpClient(ipEndPoint ?? new IPEndPoint(IPAddress.Loopback, 9001));
+            _oscClient = new UdpClient(config.OscReceiveEndPoint);
             _oscReceiveTask = OscReceiveTask(_cancelTokenSource.Token);
+
+            _axHaptics = new(config);
+            _bHaptics = new(config);
+
+            _hapticsSources = [_axHaptics, _bHaptics];
         }
 
         private static bool IsBundle(ReadOnlySpan<byte> buffer)
@@ -102,20 +95,12 @@ namespace AxSlime.Osc
             if (message.Arguments.Length <= 0)
                 return;
 
-            var trigger = message.Arguments[0] as bool? ?? false;
-            if (!trigger)
-                return;
-
-            var events = ComputeEvents(message);
-            if (events.Length <= 0)
-                return;
-
-            foreach (var @event in events)
+            foreach (var @event in ComputeEvents(message))
             {
                 _axisCommander.SetNodeVibration(
                     (byte)@event.Node,
-                    @event.Intensity ?? HapticsIntensity,
-                    @event.Duration ?? HapticsDurationSeconds
+                    @event.Intensity ?? _config.Haptics.TouchIntensity,
+                    @event.Duration ?? _config.Haptics.TouchDurationS
                 );
             }
         }
@@ -126,12 +111,11 @@ namespace AxSlime.Osc
                 return [];
 
             var param = message.Address[AvatarParamPrefix.Length..];
-
-            if (UseAxHaptics && _axHaptics.IsSource(param, message))
-                return _axHaptics.ComputeHaptics(param, message);
-
-            if (UseBHaptics && _bHaptics.IsSource(param, message))
-                return _bHaptics.ComputeHaptics(param, message);
+            foreach (var source in _hapticsSources)
+            {
+                if (source.IsSource(param, message))
+                    return source.ComputeHaptics(param, message);
+            }
 
             return [];
         }
