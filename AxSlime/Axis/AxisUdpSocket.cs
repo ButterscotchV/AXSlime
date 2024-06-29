@@ -136,7 +136,7 @@ namespace AxSlime.Axis
             i += sizeof(float);
             var w = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
             i += sizeof(float);
-            hub.Rotation = new Quaternion(x, y, z, w);
+            hub.Rotation = new Quaternion(x, y, -z, w);
 
             var xPos = BinaryPrimitives.ReadSingleLittleEndian(hubData[i..]);
             i += sizeof(float);
