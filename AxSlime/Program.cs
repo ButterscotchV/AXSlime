@@ -20,7 +20,7 @@ try
 
     // Load config
     JsonConfigHandler<AxSlimeConfig> configHandler = new JsonConfigHandler<AxSlimeConfig>(
-        "AXSlime_Config.json",
+        Path.Join(AppDomain.CurrentDomain.BaseDirectory, "AXSlime_Config.json"),
         JsonConfigHandler<AxSlimeConfig>.Context.AxSlimeConfig
     );
     config = configHandler.InitializeConfig(AxSlimeConfig.Default);
